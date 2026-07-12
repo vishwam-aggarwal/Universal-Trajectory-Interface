@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universal Trajectory Interface — Technical Explainer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css">
+<style>
+:root {
+  --sidebar-w: 268px;
+  --accent: #0969da;
+  --accent-light: #ddf4ff;
+  --purple: #8250df;
+  --green: #2ea44f;
+  --border: #d0d7de;
+  --text: #1f2328;
+  --muted: #57606a;
+  --bg: #ffffff;
+  --surface: #f6f8fa;
+  --code-bg: #161b22;
+  --math-bg: #f0f6ff;
+  --math-border: #0969da;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 16px; line-height: 1.75; color: var(--text); background: var(--bg);
+  display: flex;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────────── */
+nav {
+  width: var(--sidebar-w); min-height: 100vh; background: #0d1117; color: #c9d1d9;
+  position: fixed; top: 0; left: 0; overflow-y: auto; padding: 28px 0; font-size: 13.5px;
+}
+nav .logo { padding: 0 20px 20px; border-bottom: 1px solid #30363d; margin-bottom: 12px; }
+nav .logo h2 { color: #fff; font-size: 14px; font-weight: 700; line-height: 1.3; }
+nav .logo p  { color: #6e7681; font-size: 12px; margin-top: 4px; }
+nav .group-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .1em;
+  color: #6e7681; padding: 14px 20px 4px;
+}
+nav a {
+  display: block; padding: 6px 20px; color: #c9d1d9; text-decoration: none;
+  border-left: 3px solid transparent; transition: all .15s; line-height: 1.4;
+}
+nav a:hover { color: #58a6ff; border-left-color: #58a6ff; background: rgba(88,166,255,.08); }
+
+/* ── MAIN ────────────────────────────────────────────────── */
+main { margin-left: var(--sidebar-w); max-width: 880px; padding: 52px 60px; width: 100%; }
+
+/* ── HERO ────────────────────────────────────────────────── */
+.hero {
+  background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+  color: #fff; padding: 44px 48px; border-radius: 12px; margin-bottom: 48px;
+}
+.hero .badge {
+  display: inline-block; background: rgba(88,166,255,.2); color: #58a6ff;
+  border: 1px solid rgba(88,166,255,.35); padding: 3px 12px; border-radius: 20px;
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+  margin-bottom: 16px;
+}
+.hero h1 { font-size: 1.9rem; color: #fff; margin-bottom: 10px; }
+.hero p  { color: #8b949e; font-size: 1.05rem; line-height: 1.6; }
+
+/* ── TYPOGRAPHY ──────────────────────────────────────────── */
+section { scroll-margin-top: 24px; padding-top: 4px; }
+h2 {
+  font-size: 1.45rem; font-weight: 700; color: #1a1a2e;
+  margin: 52px 0 18px; padding-bottom: 10px; border-bottom: 2px solid var(--border);
+}
+h2 .part-num {
+  display: inline-block; background: var(--accent); color: #fff;
+  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px;
+  margin-right: 10px; vertical-align: middle; text-transform: uppercase; letter-spacing: .05em;
+}
+h3 { font-size: 1.1rem; font-weight: 600; color: var(--accent); margin: 30px 0 10px; }
+h4 { font-size: .9rem; font-weight: 700; color: var(--muted); margin: 22px 0 8px;
+     text-transform: uppercase; letter-spacing: .08em; }
+p  { margin-bottom: 14px; }
+ul, ol { padding-left: 24px; margin-bottom: 14px; }
+li { margin-bottom: 6px; }
+strong { color: #1a1a2e; }
+code:not([class]) {
+  background: #e8eef4; padding: 2px 6px; border-radius: 4px;
+  font-family: 'Courier New', monospace; font-size: 13px; color: #0550ae;
+}
+pre[class*="language-"] { margin: 18px 0; border-radius: 8px; font-size: 13px !important; }
+
+/* ── CALLOUTS ────────────────────────────────────────────── */
+.callout {
+  border-radius: 8px; padding: 16px 20px; margin: 22px 0;
+  border: 1px solid var(--border);
+}
+.callout p:last-child { margin-bottom: 0; }
+.callout-head {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; margin-bottom: 8px;
+}
+.callout.key   { background: var(--accent-light); border-color: #54aeff; border-left: 4px solid var(--accent); }
+.callout.key .callout-head { color: var(--accent); }
+.callout.analogy { background: #fdf8ff; border-color: #bf8cff; border-left: 4px solid var(--purple); }
+.callout.analogy .callout-head { color: var(--purple); }
+.callout.warn  { background: #fff8c5; border-color: #d4a72c; border-left: 4px solid #d4a72c; }
+.callout.warn .callout-head { color: #9a6700; }
+
+/* ── MATH BLOCKS ─────────────────────────────────────────── */
+.math {
+  background: var(--math-bg); border-left: 4px solid var(--accent);
+  padding: 16px 22px; margin: 20px 0; border-radius: 0 8px 8px 0;
+  font-family: 'Courier New', monospace; font-size: 14px; line-height: 2;
+  color: #0a3069; white-space: pre-line;
+}
+
+/* ── TABLES ──────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px; }
+th { background: #0d1117; color: #fff; padding: 10px 16px; text-align: left; font-weight: 600; }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:nth-child(even) td { background: var(--surface); }
+tr:hover td { background: var(--accent-light); }
+
+/* ── DIAGRAMS ────────────────────────────────────────────── */
+.diagram {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 28px 24px; margin: 24px 0; text-align: center;
+}
+.diagram figcaption { margin-top: 14px; font-size: 13px; color: var(--muted); font-style: italic; }
+
+/* ── ARCHITECTURE BOX ────────────────────────────────────── */
+.arch { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; align-items: center; margin: 20px 0; }
+.arch-box {
+  background: #0d1117; color: #fff; padding: 10px 18px; border-radius: 8px;
+  font-family: monospace; font-size: 13px; line-height: 1.5; text-align: center;
+  border: 1px solid #30363d;
+}
+.arch-box .sub { color: #58a6ff; font-size: 11px; }
+.arch-arrow { font-size: 1.6rem; color: var(--accent); }
+.arch-note  { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+/* ── REFERENCES ──────────────────────────────────────────── */
+.ref-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 16px 0; }
+.ref-card {
+  border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+  text-decoration: none; color: var(--text); transition: border-color .15s, box-shadow .15s;
+  display: block;
+}
+.ref-card:hover { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(9,105,218,.1); }
+.ref-card .badge {
+  display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px;
+  border-radius: 10px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .06em;
+}
+.badge-web    { background: #ddf4ff; color: #0969da; }
+.badge-book   { background: #fff1e5; color: #bc4c00; }
+.badge-video  { background: #ffebe9; color: #cf222e; }
+.badge-course { background: #fbefff; color: #8250df; }
+.ref-card strong { display: block; font-size: 14px; margin-bottom: 4px; }
+.ref-card p  { font-size: 13px; color: var(--muted); margin: 0; }
+
+@media (max-width: 900px) {
+  nav { display: none; }
+  main { margin-left: 0; padding: 24px 20px; }
+  .ref-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════ SIDEBAR -->
+<nav>
+  <div class="logo">
+    <h2>Universal Trajectory<br>Interface</h2>
+    <p>Technical Explainer</p>
+  </div>
+
+  <div class="group-label">Foundations</div>
+  <a href="#cpp">Part 1 — C++ for Motion Engineers</a>
+  <a href="#matlab">Part 2 — From MATLAB to C++</a>
+
+  <div class="group-label">Math Types</div>
+  <a href="#vec3">Part 3 — Vec3 (3D Vectors)</a>
+  <a href="#quatf">Part 4 — Quaternions &amp; SLERP</a>
+
+  <div class="group-label">Path Geometry</div>
+  <a href="#ipath">Part 5 — Arc-Length Parameterization</a>
+  <a href="#line">Part 6 — LinePath</a>
+  <a href="#arc">Part 7 — ArcPath</a>
+
+  <div class="group-label">Composition</div>
+  <a href="#cartesian">Part 8 — CartesianMove</a>
+  <a href="#group">Part 9 — TrajectoryGroup</a>
+  <a href="#bigpicture">Part 10 — The Big Picture</a>
+
+  <div class="group-label">Study Resources</div>
+  <a href="#refs-cpp">C++ Programming</a>
+  <a href="#refs-math">3D Math &amp; Vectors</a>
+  <a href="#refs-quat">Quaternions</a>
+  <a href="#refs-traj">Trajectory Planning</a>
+  <a href="#refs-robotics">Robotics</a>
+</nav>
+
+<!-- ═══════════════════════════════════════════════════ MAIN -->
+<main>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="badge">For Motions Engineers · No Robotics Training Required</div>
+  <h1>How the Trajectory Library Works</h1>
+  <p>You wrote the MATLAB trapezoidal profile. This document walks through every piece of C++ and math added on top of it — building from what you already know, step by step. Free study references at the bottom.</p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 1 -->
+<section id="cpp">
+<h2><span class="part-num">Part 1</span> C++ in Five Minutes for a Motion Engineer</h2>
+
+<p>In MATLAB you call functions directly. In C++ for real-time systems, you organize code into <strong>classes</strong> — bundles of data and functions that belong together. A motion profile is a good example: it has internal state (the phase timing) and behaviors (plan, evaluate). A class holds both.</p>
+
+<h3>What a class looks like</h3>
+<p>Think of a class like a function block in IEC 61131-3 PLC programming — it has inputs, outputs, and internal memory that persists between calls.</p>
+
+<pre><code class="language-cpp">class TrapezoidalProfile {
+public:
+    bool  plan(float q0, float qf, const TrajectoryLimits& limits);
+    bool  evaluate(float t, float& pos, float& vel, float& accel);
+    float getDuration();
+
+private:
+    float _t1, _t2, _t3;    // phase timing — stored between calls
+    float _vPeak, _aMax;
+    bool  _valid;
+};</code></pre>
+
+<p><code>public:</code> means these functions are accessible from outside. <code>private:</code> means only the class itself can touch those variables — they're internal state.</p>
+
+<h3>Interfaces — the really important concept</h3>
+
+<p>Suppose you want to swap between a trapezoidal profile and an S-curve profile without changing the code that <em>uses</em> the profile. You need a <strong>contract</strong> — a guarantee that both types respond to the same function calls. In C++ this is an <strong>interface</strong> (also called an abstract class).</p>
+
+<div class="callout analogy">
+  <div class="callout-head">⚙️ Motion Control Analogy</div>
+  <p>This is exactly like a CiA 402 drive profile. Whether you're talking to a Beckhoff EL7211, a Kollmorgen AKD, or a simulated axis, they all respond to the same CoE objects: target position, actual position, status word. The interface is standardized; the implementation is swappable. <code>ITrajectoryProfile</code> plays the same role for trajectory generators.</p>
+</div>
+
+<pre><code class="language-cpp">class ITrajectoryProfile {
+public:
+    virtual ~ITrajectoryProfile() = default;
+
+    virtual bool  plan(float q0, float qf, const TrajectoryLimits& limits,
+                       float targetDuration = 0.0f) = 0;
+    virtual bool  evaluate(float t, float& pos, float& vel, float& accel) const = 0;
+    virtual float getDuration() const = 0;
+};</code></pre>
+
+<p>The keyword <code>virtual</code> marks a function that can be overridden by a derived class. The <code>= 0</code> means "this class does NOT implement it — any concrete class must." You can never create an <code>ITrajectoryProfile</code> object directly; it is abstract.</p>
+
+<p><code>TrapezoidalProfile</code> then <strong>implements</strong> the interface:</p>
+
+<pre><code class="language-cpp">class TrapezoidalProfile : public ITrajectoryProfile {
+public:
+    bool  plan(...)     override;   // fills in the abstract promise
+    bool  evaluate(...) override;
+    float getDuration() override;
+    ...
+};</code></pre>
+
+<p>The <code>override</code> keyword tells the compiler "I intend to override a virtual function." If you mistype the name, the compiler catches it — it won't silently create a new, unrelated function.</p>
+
+<h3>Pointers — holding a reference without knowing the type</h3>
+
+<p>A pointer (<code>ITrajectoryProfile*</code>) holds the memory address of an object. The crucial thing: a pointer to the <em>interface type</em> can hold the address of <em>any concrete type</em> that implements it. This is called polymorphism.</p>
+
+<pre><code class="language-cpp">TrapezoidalProfile trap;          // the real object
+ITrajectoryProfile* p = &trap;    // pointer to the interface
+
+p->plan(0, 10, limits);           // calls TrapezoidalProfile::plan()
+p->evaluate(0.5, pos, vel, accel); // calls TrapezoidalProfile::evaluate()
+
+// Later you can point at a different implementation with no other code changes:
+// SCurveProfile scurve;
+// p = &scurve;</code></pre>
+
+<p><code>TrajectoryGroup</code> and <code>CartesianMove</code> store <code>ITrajectoryProfile*</code> pointers — they call <code>plan()</code> and <code>evaluate()</code> without knowing or caring whether a trapezoidal or S-curve profile is behind the pointer.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 2 -->
+<section id="matlab">
+<h2><span class="part-num">Part 2</span> From MATLAB to C++ — What You Already Know</h2>
+
+<p>You wrote the MATLAB trapezoidal trajectory math. The C++ port is the same math, reorganized. Here is the direct mapping:</p>
+
+<table>
+  <thead><tr><th>MATLAB function</th><th>C++ equivalent</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>Trap_calculateTimeSegments</code></td>
+      <td>First half of <code>TrapezoidalProfile::plan()</code></td>
+      <td>Computes <code>_t1</code>, <code>_t2</code>, <code>_t3</code>, <code>_vPeak</code></td>
+    </tr>
+    <tr>
+      <td><code>Trap_calculateMotion</code></td>
+      <td>Kinematic equations inside <code>evaluate()</code></td>
+      <td>s = s₀ + v₀·dt + ½a·dt² used per phase</td>
+    </tr>
+    <tr>
+      <td><code>Trap_calculateInitialConditions</code></td>
+      <td>Inlined into <code>evaluate()</code></td>
+      <td>Phase entry conditions recomputed each call (no array storage needed)</td>
+    </tr>
+    <tr>
+      <td><code>Trap_CalculateTraj</code> (the loop)</td>
+      <td><code>TrapezoidalProfile::evaluate()</code></td>
+      <td>Same phase-selection logic; C++ computes <em>one</em> point per call</td>
+    </tr>
+    <tr>
+      <td><code>getTrapTraj</code> (top-level)</td>
+      <td><code>plan()</code> + repeated <code>evaluate()</code> calls from the caller</td>
+      <td>C++ caller drives the loop; library just answers point-in-time queries</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout key">
+  <div class="callout-head">Key Difference</div>
+  <p>MATLAB generates the <em>entire trajectory as an array</em> upfront — all points, all at once. The C++ library computes <em>one setpoint on demand</em>, called every control tick. This is what makes it real-time safe: no pre-allocation, no loops in the hot path, just arithmetic.</p>
+</div>
+
+<h3>The phase selection — straight from your MATLAB</h3>
+<p>Your MATLAB <code>Trap_CalculateTraj</code> uses this branching:</p>
+
+<pre><code class="language-matlab">if t(R) &lt; segments.t1
+    % acceleration phase
+elseif t(R) &lt; segments.t2
+    % cruise phase
+elseif t(R) &lt; segments.t3
+    % deceleration phase
+else
+    % settled
+end</code></pre>
+
+<p>The C++ <code>evaluate()</code> does exactly the same thing:</p>
+
+<pre><code class="language-cpp">if (t < _t1) {
+    // acceleration — same kinematic equation as your Trap_calculateMotion
+    pos   = _q0 + 0.5f * a * t * t;
+    vel   = a * t;
+    accel = a;
+} else if (t < _t2) {
+    // cruise
+    float dt = t - _t1;
+    pos   = s1 + v1 * dt;
+    vel   = v1;
+    accel = 0.0f;
+} else {
+    // deceleration
+    float dt = t - _t2;
+    pos   = s2 + v1 * dt - 0.5f * a * dt * dt;
+    vel   = v1 - a * dt;
+    accel = -a;
+}</code></pre>
+
+<h3>Time-dilation (the targetDuration parameter)</h3>
+<p>Your MATLAB didn't have this, but it uses the same math you already wrote. When you want a profile to take exactly <code>T</code> seconds instead of its natural minimum time, the peak velocity must be lower. Setting <code>t₃ = T</code> and solving for <code>vPeak</code>:</p>
+
+<div class="math">t₃ = vPeak/aMax  +  displacement/vPeak
+
+Rearrange:  vPeak²/aMax  –  T·vPeak  +  displacement  =  0
+
+Quadratic formula (take the smaller root — lower speed, longer move):
+vPeak = (aMax / 2) × (T – √(T² – 4·displacement/aMax))</div>
+
+<p>This is what <code>TrajectoryGroup</code> uses to slow down the faster axes to match the slowest one.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 3 -->
+<section id="vec3">
+<h2><span class="part-num">Part 3</span> Vec3 — The 3D Building Block</h2>
+
+<p>A <code>Vec3</code> is simply a container for three floats — an (x, y, z) coordinate or direction — with math operations defined so you can write <code>p0 + dir * s</code> instead of operating on each component individually.</p>
+
+<pre><code class="language-cpp">struct Vec3 {
+    float x = 0.0f, y = 0.0f, z = 0.0f;
+
+    Vec3 operator+(const Vec3& o) const { return {x+o.x, y+o.y, z+o.z}; }
+    Vec3 operator*(float s)       const { return {x*s,   y*s,   z*s};   }
+    float dot(const Vec3& o)      const { return x*o.x + y*o.y + z*o.z; }
+    Vec3  cross(const Vec3& o)    const { ... }
+    Vec3  normalized()            const { return *this / magnitude(); }
+};</code></pre>
+
+<div class="callout analogy">
+  <div class="callout-head">⚙️ Motion Control Analogy</div>
+  <p>Think of <code>Vec3</code> like the three channels of a 3-axis encoder head — X, Y, Z readings bundled together. The math operations (add, subtract, scale) are the arithmetic you'd do on those readings to compute distances and directions.</p>
+</div>
+
+<h3>Dot product — measuring alignment</h3>
+<div class="math">a · b  =  ax·bx + ay·by + az·bz
+         =  |a| × |b| × cos(angle between them)</div>
+<ul>
+  <li><strong>Result = 1</strong> → vectors point the same direction</li>
+  <li><strong>Result = 0</strong> → vectors are perpendicular (90°)</li>
+  <li><strong>Result = −1</strong> → vectors point opposite directions</li>
+</ul>
+<p>Used in <code>Quatf::slerp()</code> to measure the angle between two orientations.</p>
+
+<h3>Cross product — finding a perpendicular direction</h3>
+<div class="math">a × b  =  ( ay·bz – az·by,
+             az·bx – ax·bz,
+             ax·by – ay·bx )</div>
+<p>The result is a vector <em>perpendicular to both a and b</em>. Used in <code>ArcPath</code> to build the arc's coordinate frame: given a radial direction <code>u</code> and the arc plane's normal, <code>normal × u</code> gives the tangent direction at the start of the arc.</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 340 180" width="340" height="180" font-family="monospace" font-size="13">
+    <!-- axes -->
+    <defs><marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#0969da"/>
+    </marker>
+    <marker id="ah2" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#2ea44f"/>
+    </marker>
+    <marker id="ah3" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#cf222e"/>
+    </marker></defs>
+    <!-- origin -->
+    <circle cx="120" cy="110" r="4" fill="#1a1a2e"/>
+    <!-- a vector -->
+    <line x1="120" y1="110" x2="220" y2="60" stroke="#0969da" stroke-width="2.5" marker-end="url(#ah)"/>
+    <text x="228" y="58" fill="#0969da" font-weight="bold">a</text>
+    <!-- b vector -->
+    <line x1="120" y1="110" x2="190" y2="155" stroke="#2ea44f" stroke-width="2.5" marker-end="url(#ah2)"/>
+    <text x="196" y="162" fill="#2ea44f" font-weight="bold">b</text>
+    <!-- cross product (coming out of page) -->
+    <line x1="120" y1="110" x2="75" y2="35" stroke="#cf222e" stroke-width="2.5" marker-end="url(#ah3)"/>
+    <text x="50" y="28" fill="#cf222e" font-weight="bold">a×b</text>
+    <text x="50" y="44" fill="#cf222e" font-size="11">(perpendicular</text>
+    <text x="50" y="58" fill="#cf222e" font-size="11"> to both)</text>
+    <!-- dot product label -->
+    <text x="185" y="105" fill="#57606a" font-size="12">a · b = cos(θ)</text>
+    <!-- angle arc -->
+    <path d="M 155 97 A 40 40 0 0 1 149 81" fill="none" stroke="#57606a" stroke-width="1.5"/>
+    <text x="158" y="88" fill="#57606a" font-size="12">θ</text>
+  </svg>
+  <figcaption>Dot product measures the angle between vectors. Cross product produces a vector perpendicular to both.</figcaption>
+</div>
+
+<h3>Normalize — making a direction vector unit-length</h3>
+<p>Many calculations require that direction vectors have a <em>magnitude of exactly 1</em> (a "unit vector"). If a vector has length 3.7, dividing each component by 3.7 scales it to length 1 without changing the direction. The tangent returned by <code>LinePath</code> and <code>ArcPath</code> is always normalized so that speed × tangent gives the correct velocity magnitude.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 4 -->
+<section id="quatf">
+<h2><span class="part-num">Part 4</span> Quaternions (Quatf) — Representing 3D Orientation</h2>
+
+<h3>Why not just use three angles?</h3>
+<p>Euler angles (roll, pitch, yaw) seem intuitive but have a famous problem called <strong>gimbal lock</strong>: at certain orientations, two of the three rotation axes align and you lose a degree of freedom. This causes singularities in interpolation — the end-effector snaps or spins unexpectedly. Industrial 6-axis robots hit this when the wrist is near-straight.</p>
+
+<p>Quaternions avoid this completely. They represent any rotation in 3D without singularities.</p>
+
+<h3>What a quaternion stores</h3>
+<p>A quaternion <code>(w, x, y, z)</code> encodes a rotation as:</p>
+<div class="math">w  =  cos(angle / 2)
+x  =  sin(angle / 2) × axis_x
+y  =  sin(angle / 2) × axis_y
+z  =  sin(angle / 2) × axis_z</div>
+
+<p>Example: a 90° rotation about the Z-axis:</p>
+<div class="math">angle = 90°,  axis = (0, 0, 1)
+
+w = cos(45°) = 0.7071
+x = sin(45°) × 0 = 0
+y = sin(45°) × 0 = 0
+z = sin(45°) × 1 = 0.7071
+
+Quaternion: (0.7071,  0,  0,  0.7071)</div>
+
+<p>You don't need to construct quaternions by hand for this library. You receive them from a sensor or kinematics solver, store them in <code>Quatf</code>, and pass them to <code>CartesianMove</code>.</p>
+
+<h3>SLERP — smooth interpolation between two orientations</h3>
+<p>SLERP (Spherical Linear Interpolation) is to quaternions what linear interpolation is to numbers. Given a start orientation <code>q0</code>, an end orientation <code>q1</code>, and a fraction <code>t ∈ [0, 1]</code>:</p>
+
+<div class="math">SLERP(q0, q1, 0.0) → q0          (start)
+SLERP(q0, q1, 0.5) → midpoint rotation
+SLERP(q0, q1, 1.0) → q1          (end)</div>
+
+<p>The result always rotates at constant angular velocity along the <em>shortest path</em> between the two orientations — no snapping, no gimbal lock.</p>
+
+<pre><code class="language-cpp">static Quatf slerp(Quatf a, Quatf b, float t) {
+    float d = a.dot(b);
+    if (d < 0.0f) { b = {-b.w,-b.x,-b.y,-b.z}; d = -d; }  // shortest path
+
+    if (d > 0.9995f)   // nearly identical — fall back to linear interpolation
+        return lerp(a, b, t).normalized();
+
+    float omega  = acosf(d);           // angle between quaternions
+    float sinOmg = sinf(omega);
+    float s0 = sinf((1.0f - t) * omega) / sinOmg;
+    float s1 = sinf(       t   * omega) / sinOmg;
+
+    return { s0*a.w + s1*b.w,  s0*a.x + s1*b.x,
+             s0*a.y + s1*b.y,  s0*a.z + s1*b.z };
+}</code></pre>
+
+<div class="callout analogy">
+  <div class="callout-head">⚙️ Motion Control Analogy</div>
+  <p>SLERP is the rotational equivalent of your trapezoidal profile's cruise phase — constant-rate motion from start to end. The difference is that SLERP interpolates <em>orientation</em> (where you're pointing) rather than position (where you are). In <code>CartesianMove</code>, orientation is SLERPed by how far along the path you've travelled, not by time — so if you pause mid-move, the wrist orientation also pauses at the correct intermediate rotation.</p>
+</div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 5 -->
+<section id="ipath">
+<h2><span class="part-num">Part 5</span> Arc-Length Parameterization — Separating Geometry from Timing</h2>
+
+<p>This is the conceptual heart of the Cartesian system. Before writing any path code, we need to understand one key idea.</p>
+
+<h3>The insight</h3>
+
+<p>Your trapezoidal profile solves a 1D problem:</p>
+<blockquote style="border-left:4px solid #d0d7de;padding:8px 16px;color:#57606a;margin:16px 0;font-style:italic;">
+  "Given a scalar distance to travel, produce a smooth speed vs. time profile."
+</blockquote>
+<p>It doesn't know or care <em>where</em> that distance is in space. All it knows is: start at 0, end at <code>length</code>, obey vMax and aMax.</p>
+
+<p><code>IPathGeometry</code> solves a completely different problem:</p>
+<blockquote style="border-left:4px solid #d0d7de;padding:8px 16px;color:#57606a;margin:16px 0;font-style:italic;">
+  "Given a distance travelled along a path, what is the 3D position and direction at that point?"
+</blockquote>
+
+<p>The input to both is the same number — <strong>arc length <code>s</code></strong>, the odometer reading along the path. This common currency lets you combine any timing with any geometry.</p>
+
+<div class="callout analogy">
+  <div class="callout-head">⚙️ Motion Control Analogy</div>
+  <p>You probably know cam profiles. A cam profile maps <em>cam angle</em> → <em>follower position</em>. The cam angle is the independent variable (like our <code>s</code>), and the follower position is the output. Separately, the cam shaft speed (rpm) controls how fast the angle advances — that's the timing. You design the cam shape independently of how fast you spin it. This library does exactly the same thing: the path shape (<code>IPathGeometry</code>) is designed independently of the speed profile (<code>ITrajectoryProfile</code>).</p>
+</div>
+
+<pre><code class="language-cpp">class IPathGeometry {
+public:
+    // s ranges from 0 to getLength().
+    // Returns Cartesian position and unit tangent direction at arc-length s.
+    virtual void evaluate(float s, Vec3& position, Vec3& tangent) const = 0;
+
+    virtual float getLength() const = 0;
+};</code></pre>
+
+<p>The tangent is the direction you're travelling at point <code>s</code>. For a straight line, it's constant. For a circle, it rotates continuously as you move along the arc.</p>
+
+<div class="diagram">
+  <svg viewBox="0 0 540 120" width="540" height="120" font-family="sans-serif" font-size="13">
+    <!-- Profile box -->
+    <rect x="10" y="30" width="140" height="60" rx="8" fill="#0d1117" stroke="#30363d"/>
+    <text x="80" y="56" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">TrapezoidalProfile</text>
+    <text x="80" y="74" text-anchor="middle" fill="#58a6ff" font-size="11">evaluate(t)</text>
+    <text x="80" y="88" text-anchor="middle" fill="#6e7681" font-size="11">→ s, speed, tangAccel</text>
+    <!-- arrow 1 -->
+    <line x1="152" y1="60" x2="192" y2="60" stroke="#0969da" stroke-width="2" marker-end="url(#ah)"/>
+    <text x="172" y="54" text-anchor="middle" fill="#0969da" font-size="11">s(t)</text>
+    <!-- Path box -->
+    <rect x="195" y="30" width="130" height="60" rx="8" fill="#0d1117" stroke="#30363d"/>
+    <text x="260" y="56" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">LinePath / ArcPath</text>
+    <text x="260" y="74" text-anchor="middle" fill="#58a6ff" font-size="11">evaluate(s)</text>
+    <text x="260" y="88" text-anchor="middle" fill="#6e7681" font-size="11">→ position, tangent</text>
+    <!-- arrow 2 -->
+    <line x1="327" y1="60" x2="367" y2="60" stroke="#0969da" stroke-width="2" marker-end="url(#ah)"/>
+    <!-- Compose box -->
+    <rect x="370" y="30" width="150" height="60" rx="8" fill="#8250df" stroke="#bf8cff"/>
+    <text x="445" y="52" text-anchor="middle" fill="#fff" font-weight="bold" font-size="13">CartesianMove</text>
+    <text x="445" y="68" text-anchor="middle" fill="#e0b8ff" font-size="11">vel = speed × tangent</text>
+    <text x="445" y="84" text-anchor="middle" fill="#e0b8ff" font-size="11">ori = SLERP(q0,q1,s/L)</text>
+  </svg>
+  <figcaption>The profile produces a scalar distance s(t). The path geometry converts s into 3D space. CartesianMove combines them.</figcaption>
+</div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 6 -->
+<section id="line">
+<h2><span class="part-num">Part 6</span> LinePath — Straight Line in 3D</h2>
+
+<p>A straight line from point <code>p0</code> to point <code>p1</code> is the simplest path geometry. Given arc length <code>s</code>, the position is:</p>
+
+<div class="math">position(s)  =  p0  +  direction × s
+
+where  direction  =  (p1 – p0) / |p1 – p0|  (unit vector from p0 toward p1)</div>
+
+<p>The tangent is simply <code>direction</code> — it's the same everywhere on a straight line. Length is the Euclidean distance between the endpoints.</p>
+
+<pre><code class="language-cpp">LinePath::LinePath(const Vec3& p0, const Vec3& p1) : _p0(p0) {
+    Vec3 delta = p1 - p0;
+    _length = delta.magnitude();
+    _dir    = (_length > 0.0f) ? delta / _length : Vec3{1,0,0};
+}
+
+void LinePath::evaluate(float s, Vec3& position, Vec3& tangent) const {
+    position = _p0 + _dir * s;
+    tangent  = _dir;
+}</code></pre>
+
+<p>That's the entire class. No interesting math — just the definition of a line.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 7 -->
+<section id="arc">
+<h2><span class="part-num">Part 7</span> ArcPath — Circular Arc in 3D</h2>
+
+<p>This is the most math-heavy piece. Let's build it up from scratch.</p>
+
+<h3>Step 1 — A circle needs a coordinate frame</h3>
+
+<p>A circle in 3D space lives in a plane. To describe points on it, you need two perpendicular unit vectors that lie <em>in that plane</em>. Call them <strong>u</strong> and <strong>v</strong>.</p>
+
+<p>Then any point on the circle is:</p>
+<div class="math">position(θ)  =  center  +  radius × (cos(θ) · u  +  sin(θ) · v)</div>
+
+<p>At θ = 0: position = center + radius × u — this is the <strong>start point</strong>.</p>
+<p>So <strong>u</strong> is the unit vector from the center toward the start point:</p>
+<div class="math">u  =  (startPoint – center) / radius</div>
+
+<div class="diagram">
+  <svg viewBox="0 0 320 270" width="320" height="270" font-family="monospace" font-size="12">
+    <defs>
+      <marker id="bh" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0,8 3,0 6" fill="#0969da"/></marker>
+      <marker id="gh" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0,8 3,0 6" fill="#2ea44f"/></marker>
+      <marker id="rh" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+        <polygon points="0 0,8 3,0 6" fill="#cf222e"/></marker>
+    </defs>
+    <!-- circle -->
+    <circle cx="140" cy="140" r="90" fill="none" stroke="#d0d7de" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <!-- arc highlight -->
+    <path d="M 230 140 A 90 90 0 0 0 140 50" fill="none" stroke="#8250df" stroke-width="3"/>
+    <!-- center -->
+    <circle cx="140" cy="140" r="4" fill="#1a1a2e"/>
+    <text x="148" y="158" fill="#1a1a2e" font-weight="bold">center</text>
+    <!-- u vector -->
+    <line x1="140" y1="140" x2="225" y2="140" stroke="#0969da" stroke-width="2.5" marker-end="url(#bh)"/>
+    <text x="232" y="144" fill="#0969da" font-weight="bold">u</text>
+    <text x="194" y="158" fill="#0969da" font-size="11">startPoint</text>
+    <!-- v vector -->
+    <line x1="140" y1="140" x2="140" y2="55" stroke="#2ea44f" stroke-width="2.5" marker-end="url(#gh)"/>
+    <text x="146" y="52" fill="#2ea44f" font-weight="bold">v</text>
+    <text x="146" y="65" fill="#2ea44f" font-size="10">= normal × u</text>
+    <!-- normal (out of page) -->
+    <circle cx="60" cy="60" r="14" fill="none" stroke="#cf222e" stroke-width="2"/>
+    <circle cx="60" cy="60" r="4" fill="#cf222e"/>
+    <text x="78" y="56" fill="#cf222e" font-weight="bold">normal</text>
+    <text x="78" y="70" fill="#cf222e" font-size="10">(out of page)</text>
+    <!-- point on arc (45 deg) -->
+    <circle cx="204" cy="76" r="5" fill="#8250df"/>
+    <text x="210" y="72" fill="#8250df" font-size="11">position(θ)</text>
+    <!-- theta arc -->
+    <path d="M 195 140 A 55 55 0 0 0 179 101" fill="none" stroke="#57606a" stroke-width="1.5"/>
+    <text x="198" y="118" fill="#57606a">θ</text>
+    <!-- radius line -->
+    <line x1="140" y1="140" x2="204" y2="76" stroke="#57606a" stroke-width="1" stroke-dasharray="3,2"/>
+    <text x="158" y="117" fill="#57606a" font-size="11">radius</text>
+  </svg>
+  <figcaption>The arc coordinate frame. <strong style="color:#0969da">u</strong> points to the start. <strong style="color:#2ea44f">v = normal × u</strong> is the CCW tangent at the start. Any point on the arc is center + radius·(cos θ·u + sin θ·v).</figcaption>
+</div>
+
+<h3>Step 2 — Finding v with the cross product</h3>
+
+<p>You want <strong>v</strong> to be perpendicular to <strong>u</strong> and lie in the arc's plane. The arc plane's orientation is defined by its <strong>normal</strong> vector (pointing out of the plane, like the Z-axis of the arc's local frame).</p>
+
+<div class="math">v  =  normal × u   (cross product)</div>
+
+<p>Why does this work? The cross product of two vectors produces a vector perpendicular to <em>both</em>. Since <code>normal</code> is perpendicular to the arc plane, and <code>u</code> lies in the arc plane, their cross product lies in the arc plane and is perpendicular to <code>u</code>.</p>
+
+<p>Right-hand rule check: if normal points out of the page and u points right, then v = normal × u points upward — which is the CCW tangent direction at the start. ✓</p>
+
+<h3>Step 3 — Arc length to angle</h3>
+
+<p>The arc length of a sector is <code>s = radius × θ</code>, so:</p>
+<div class="math">θ(s)  =  sign × s / radius
+
+where sign = +1 for CCW sweep, –1 for CW sweep</div>
+
+<h3>Step 4 — The tangent (derivative of position)</h3>
+
+<p>The tangent is how position changes as you move along the path — mathematically, <code>d(position)/ds</code>. Using the chain rule:</p>
+
+<div class="math">d(position)/ds  =  d(position)/dθ  ×  dθ/ds
+
+d(position)/dθ  =  radius × (–sin(θ)·u  +  cos(θ)·v)   ← derivative of the circle formula
+dθ/ds           =  sign / radius
+
+tangent  =  sign × (–sin(θ)·u  +  cos(θ)·v)</div>
+
+<p><strong>Verification:</strong></p>
+<ul>
+  <li>At θ = 0 (start): tangent = sign × v — pointing in the CCW direction ✓</li>
+  <li>After a quarter-circle CCW (θ = π/2): tangent = –u — pointing backward along the u-axis ✓</li>
+  <li>After a half-circle CCW (θ = π): tangent = –v ✓</li>
+</ul>
+
+<pre><code class="language-cpp">void ArcPath::evaluate(float s, Vec3& position, Vec3& tangent) const {
+    float theta = _sign * s / _radius;
+    float c = cosf(theta), sn = sinf(theta);
+    position = _center + _u * (_radius * c) + _v * (_radius * sn);
+    tangent  = _v * (_sign * c) - _u * (_sign * sn);
+}</code></pre>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 8 -->
+<section id="cartesian">
+<h2><span class="part-num">Part 8</span> CartesianMove — Combining Profile and Path</h2>
+
+<p>With the building blocks in place, <code>CartesianMove</code> is straightforward. In <code>plan()</code>, the profile is told to run over <code>[0, path.getLength()]</code> instead of <code>[q0, qf]</code> — arc length replaces joint angle as the 1D coordinate. Everything else in the profile is unchanged.</p>
+
+<pre><code class="language-cpp">bool CartesianMove::plan(IPathGeometry* path, const Quatf& q0, const Quatf& q1,
+                          ITrajectoryProfile* profile, const TrajectoryLimits& limits) {
+    _path    = path;
+    _length  = path->getLength();
+    _q0 = q0;  _q1 = q1;
+    return _profile->plan(0.0f, _length, limits);  // 1D: 0 → total arc length
+}</code></pre>
+
+<p><code>evaluate(t)</code> is three steps:</p>
+
+<h4>Step 1 — Ask the profile: how far along the path, and how fast?</h4>
+<pre><code class="language-cpp">float s, speed, tangAccel;
+_profile->evaluate(t, s, speed, tangAccel);
+// s         = arc length traveled so far (0 → totalLength)
+// speed     = ds/dt  (scalar, always positive while moving forward)
+// tangAccel = d²s/dt² (scalar, positive=accelerating, negative=decelerating)</code></pre>
+
+<h4>Step 2 — Ask the path: given distance s, where are we in 3D?</h4>
+<pre><code class="language-cpp">Vec3 tangent;
+_path->evaluate(s, position, tangent);
+// position = Cartesian point at arc length s
+// tangent  = unit direction of travel at that point</code></pre>
+
+<h4>Step 3 — Combine: scalar speed → 3D velocity vector</h4>
+<pre><code class="language-cpp">velocity        = tangent * speed;        // speed (m/s) in the tangent direction
+accelTangential = tangent * tangAccel;    // tangential acceleration component
+
+float u     = s / _length;               // 0 at start, 1 at end of path
+orientation = Quatf::slerp(_q0, _q1, u); // orientation tracks path position</code></pre>
+
+<div class="callout warn">
+  <div class="callout-head">⚠️ Centripetal Acceleration on Curved Paths</div>
+  <p>The <code>accelTangential</code> output is only the <em>along-path</em> component of acceleration. On an arc, there is also centripetal (centrifugal) acceleration pointing toward the center: <strong>a_c = v² / radius</strong>. This is perpendicular to travel and NOT included in what <code>CartesianMove</code> returns. It matters only when computing torque feedforward for dynamics — a future layer will need to account for it. For position/velocity control it is not needed.</p>
+</div>
+
+<div class="callout key">
+  <div class="callout-head">Key Insight — Pluggability</div>
+  <p>Because both <code>IPathGeometry</code> and <code>ITrajectoryProfile</code> are interfaces, you can combine <em>any</em> path with <em>any</em> profile. A future SCurveProfile plugs in with no changes to <code>CartesianMove</code>. A spline path implementation plugs in with no changes to either profile. The pieces are truly independent.</p>
+</div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ PART 9 -->
+<section id="group">
+<h2><span class="part-num">Part 9</span> TrajectoryGroup — Synchronizing Multiple Joints</h2>
+
+<h3>The problem without synchronization</h3>
+
+<p>Suppose you command a 3-joint arm from configuration A to configuration B. Joint 1 needs to travel 45°, joint 2 needs 10°, joint 3 needs 90°. With individual profiles at the same limits, each joint finishes at a different time. The arm traces a curved, unpredictable path through joint space because the joints are moving at different fractions of completion at every instant.</p>
+
+<h3>The solution: two-phase planning</h3>
+
+<div class="callout analogy">
+  <div class="callout-head">⚙️ Motion Control Analogy</div>
+  <p>This is electronic gearing with a virtual master encoder. Each joint is geared to a shared virtual master axis with its own cam profile (the time-dilated trajectory). The master position is time <code>t</code>; each joint's cam maps <code>t → joint position</code>. All joints share the same master and therefore always arrive together — like a synchronized multi-axis CNC move.</p>
+</div>
+
+<p><strong>Phase 1 — Find the slowest axis:</strong></p>
+<pre><code class="language-cpp">float maxDuration = 0.0f;
+for (int i = 0; i < count; ++i) {
+    _profiles[i]->plan(q0[i], qf[i], limits[i]);      // minimum-time plan
+    float d = _profiles[i]->getDuration();
+    if (d > maxDuration) maxDuration = d;              // find the slowest
+}</code></pre>
+
+<p><strong>Phase 2 — Slow everyone down to match:</strong></p>
+<pre><code class="language-cpp">for (int i = 0; i < count; ++i) {
+    _profiles[i]->plan(q0[i], qf[i], limits[i], maxDuration);  // time-dilate
+}</code></pre>
+
+<p>The <code>targetDuration</code> parameter in the second call uses the quadratic formula from Part 2 to find a lower <code>vPeak</code> — the axis "cruises more slowly" and fills the extra time with a longer cruise phase. All axes arrive together.</p>
+
+<h3>What this does NOT do</h3>
+<p>It does <em>not</em> make the joints trace a straight Cartesian line. Each joint has its own independent profile shape (determined by its own distance and limits). Even though they're synchronized in <em>time</em>, the intermediate joint configurations still depend on each profile's individual shape. For a straight Cartesian line, you need <code>CartesianMove</code> with <code>LinePath</code>.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ BIG PICTURE -->
+<section id="bigpicture">
+<h2><span class="part-num">Part 10</span> The Big Picture</h2>
+
+<p>Here is how all the pieces relate:</p>
+
+<div class="diagram" style="text-align:left; padding: 32px 40px;">
+  <div style="font-family:monospace; font-size:14px; line-height:2.4; color:#1f2328;">
+    <div style="color:#8250df; font-weight:bold; margin-bottom:8px;">ITrajectoryProfile  (interface)</div>
+    <div style="padding-left:24px; color:#1f2328;">└── <span style="color:#0969da; font-weight:bold;">TrapezoidalProfile</span>  — phase timing, kinematic equations  <span style="color:#6e7681;">(MATLAB port)</span></div>
+    <div style="padding-left:24px; color:#1f2328;">└── <span style="color:#6e7681;">SCurveProfile</span>  — jerk-limited  <span style="color:#cf222e;">(not yet — needs physical validation + MATLAB)</span></div>
+    <br>
+    <div style="color:#8250df; font-weight:bold; margin-bottom:8px;">IPathGeometry  (interface)</div>
+    <div style="padding-left:24px;">└── <span style="color:#0969da; font-weight:bold;">LinePath</span>  — straight line, p = p0 + dir×s</div>
+    <div style="padding-left:24px;">└── <span style="color:#0969da; font-weight:bold;">ArcPath</span>  — circular arc, uses u/v coordinate frame</div>
+    <br>
+    <div style="color:#8250df; font-weight:bold; margin-bottom:8px;">Compositions</div>
+    <div style="padding-left:24px;">└── <span style="color:#0969da; font-weight:bold;">CartesianMove</span>  — IPathGeometry + ITrajectoryProfile → 3D Cartesian setpoints</div>
+    <div style="padding-left:24px;">└── <span style="color:#0969da; font-weight:bold;">TrajectoryGroup</span>  — N × ITrajectoryProfile, synchronized to shared duration</div>
+    <br>
+    <div style="color:#8250df; font-weight:bold; margin-bottom:8px;">Math types (header-only, no allocation)</div>
+    <div style="padding-left:24px;"><span style="color:#0969da; font-weight:bold;">Vec3</span>  — 3D position/direction  |  <span style="color:#0969da; font-weight:bold;">Quatf</span>  — 3D orientation + SLERP</div>
+  </div>
+</div>
+
+<p>The hot path at every control tick is: call <code>evaluate(t)</code> on whatever top-level object you have (<code>CartesianMove</code> or <code>TrajectoryGroup</code>). Everything is pure arithmetic — no memory allocation, no loops, bounded execution time.</p>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════ REFERENCES -->
+<section id="refs">
+<h2>Free Study References</h2>
+<p>Organized by topic. Everything listed here is freely available — no paywall, no subscription.</p>
+
+<!-- C++ -->
+<h3 id="refs-cpp">C++ Programming</h3>
+<div class="ref-grid">
+  <a class="ref-card" href="https://www.learncpp.com" target="_blank">
+    <span class="badge badge-web">Website</span>
+    <strong>LearnCpp.com</strong>
+    <p>The best free C++ tutorial on the web. Chapters on classes, inheritance, virtual functions, and pointers are directly relevant to this codebase. Start at Chapter 13 (classes) and Chapter 18 (virtual functions).</p>
+  </a>
+  <a class="ref-card" href="https://en.cppreference.com/w/" target="_blank">
+    <span class="badge badge-web">Reference</span>
+    <strong>cppreference.com</strong>
+    <p>The authoritative C++ reference. Use this to look up specific keywords, standard library functions, and language rules. Not a tutorial — a dictionary.</p>
+  </a>
+</div>
+
+<!-- 3D Math -->
+<h3 id="refs-math">3D Math &amp; Vectors</h3>
+<div class="ref-grid">
+  <a class="ref-card" href="https://gamemath.com" target="_blank">
+    <span class="badge badge-book">Book (Free)</span>
+    <strong>3D Math Primer — Dunn &amp; Parberry</strong>
+    <p>Full book available free on the website. Covers vectors, coordinate frames, cross products, and rotation in 3D with clear visual explanations. Chapters 2–5 are essential for Vec3 and ArcPath.</p>
+  </a>
+  <a class="ref-card" href="https://www.youtube.com/playlist?list=PLZHQObOWTQDPD3MizzM2xVFitgF8hE_ab" target="_blank">
+    <span class="badge badge-video">YouTube</span>
+    <strong>Essence of Linear Algebra — 3Blue1Brown</strong>
+    <p>16 short videos with beautiful visual explanations of vectors, dot products, cross products, and transformations. The best visual introduction to the math behind Vec3.</p>
+  </a>
+  <a class="ref-card" href="https://tutorial.math.lamar.edu/Classes/CalcIII/CalcIII.aspx" target="_blank">
+    <span class="badge badge-web">Website</span>
+    <strong>Paul's Online Math Notes — Calculus III</strong>
+    <p>Free, clear notes on 3D vectors, dot/cross products, and parametric curves. The sections on "Vectors" and "3D Space" cover everything needed for ArcPath's derivation.</p>
+  </a>
+  <a class="ref-card" href="https://www.youtube.com/watch?v=fNk_zzaMoSs" target="_blank">
+    <span class="badge badge-video">YouTube</span>
+    <strong>Vectors — 3Blue1Brown (single video)</strong>
+    <p>If you want just one 10-minute video that builds solid intuition for what a vector is and what the dot/cross products mean geometrically. Part of the Essence of Linear Algebra series.</p>
+  </a>
+</div>
+
+<!-- Quaternions -->
+<h3 id="refs-quat">Quaternions &amp; Rotation</h3>
+<div class="ref-grid">
+  <a class="ref-card" href="https://eater.net/quaternions" target="_blank">
+    <span class="badge badge-web">Interactive</span>
+    <strong>Visualizing Quaternions — Ben Eater</strong>
+    <p>Interactive explorable explanation of quaternions by the maker of breadboard computers on YouTube. The best way to build intuition for what quaternions actually <em>do</em> before studying the math.</p>
+  </a>
+  <a class="ref-card" href="https://www.youtube.com/watch?v=d4EgbgTm0Bg" target="_blank">
+    <span class="badge badge-video">YouTube</span>
+    <strong>Quaternions and 3D Rotation — 3Blue1Brown</strong>
+    <p>A visual deep-dive into quaternions. Watch this after playing with Ben Eater's interactive tool. Explains why four numbers can encode a 3D rotation and what SLERP means geometrically.</p>
+  </a>
+  <a class="ref-card" href="https://www.euclideanspace.com/maths/geometry/rotations/conversions/index.htm" target="_blank">
+    <span class="badge badge-web">Reference</span>
+    <strong>Euclidean Space — Rotation Conversions</strong>
+    <p>Free reference for converting between rotation representations: Euler angles ↔ quaternions ↔ rotation matrices. Useful when you receive orientation data from sensors or simulators in different formats.</p>
+  </a>
+</div>
+
+<!-- Trajectory Planning -->
+<h3 id="refs-traj">Trajectory Planning</h3>
+<div class="ref-grid">
+  <a class="ref-card" href="https://scholar.google.com/scholar?q=trapezoidal+velocity+profile+robot" target="_blank">
+    <span class="badge badge-web">Papers</span>
+    <strong>Google Scholar — Trapezoidal Profile</strong>
+    <p>Search "trapezoidal velocity profile robot" — dozens of free academic papers. The 2008 paper by Biagiotti &amp; Melchiorri <em>"How to Saturate a Trapezoidal Velocity Profile"</em> covers edge cases in the same framework as your MATLAB code.</p>
+  </a>
+  <a class="ref-card" href="https://www.youtube.com/watch?v=qzRvXoP2hWk" target="_blank">
+    <span class="badge badge-video">YouTube</span>
+    <strong>Motion Profiles — Trapezoidal and S-Curve</strong>
+    <p>Practical video explanation of trapezoidal and S-curve profiles from a motion control perspective. Connects the math to servo drive behavior.</p>
+  </a>
+</div>
+
+<!-- Robotics -->
+<h3 id="refs-robotics">Robotics Fundamentals</h3>
+<div class="ref-grid">
+  <a class="ref-card" href="https://modernrobotics.northwestern.edu" target="_blank">
+    <span class="badge badge-book">Book (Free)</span>
+    <strong>Modern Robotics — Lynch &amp; Park</strong>
+    <p>Full textbook PDF available free. The most accessible rigorous robotics textbook. Chapter 9 covers trajectory generation. Chapter 4 covers forward kinematics (the missing step between this library and a real robot).</p>
+  </a>
+  <a class="ref-card" href="https://www.coursera.org/specializations/modernrobotics" target="_blank">
+    <span class="badge badge-course">Course (Audit Free)</span>
+    <strong>Modern Robotics Specialization — Coursera</strong>
+    <p>6-course Coursera series based on the Lynch &amp; Park textbook. Audit for free (no certificate). Covers kinematics, trajectory, and control. Ideal next step after mastering this library.</p>
+  </a>
+  <a class="ref-card" href="https://ocw.mit.edu/courses/2-12-introduction-to-robotics-fall-2005/" target="_blank">
+    <span class="badge badge-course">Course (Free)</span>
+    <strong>MIT OCW 2.12 — Introduction to Robotics</strong>
+    <p>Free lecture notes and problem sets from MIT's robotics course. Covers kinematics, dynamics, and control. The kinematics notes are very relevant to how <code>CartesianMove</code> would connect to an actual robot arm.</p>
+  </a>
+  <a class="ref-card" href="http://lavalle.pl/planning/" target="_blank">
+    <span class="badge badge-book">Book (Free)</span>
+    <strong>Planning Algorithms — LaValle</strong>
+    <p>Full textbook available free. Chapter 8 covers motion planning through geometric space — the formal foundation for the arc-length parameterization concept used in <code>IPathGeometry</code>. Heavy reading, but the reference if you want full depth.</p>
+  </a>
+</div>
+
+<br>
+<div class="callout key" style="margin-top:32px;">
+  <div class="callout-head">Recommended Reading Order</div>
+  <p>If you're starting from scratch on the non-motion-control parts:</p>
+  <ol style="margin-top:8px;">
+    <li><strong>Vectors</strong> — 3Blue1Brown Essence of Linear Algebra (videos 1–4), then gamemath.com chapters 2–3</li>
+    <li><strong>C++</strong> — learncpp.com chapters 13, 15, 18</li>
+    <li><strong>Quaternions</strong> — Ben Eater's interactive tool, then 3Blue1Brown quaternion video</li>
+    <li><strong>Robotics context</strong> — Modern Robotics chapters 4 and 9 (free PDF)</li>
+  </ol>
+</div>
+</section>
+
+<div style="margin-top:64px; padding-top:24px; border-top:1px solid var(--border); color:var(--muted); font-size:13px; text-align:center;">
+  Generated for the Universal Trajectory Interface project · Tailored for motion engineers without a formal robotics background
+</div>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-matlab.min.js"></script>
+<script>
+  // Highlight active nav link on scroll
+  const sections = document.querySelectorAll('section[id]');
+  const links = document.querySelectorAll('nav a');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${e.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>
