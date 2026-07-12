@@ -18,48 +18,74 @@ No hardware dependencies. Runs identically on Arduino, Teensy, and Linux x86.
 
 ## Platform compatibility
 
-| Class | Arduino Uno (ATmega328P) | Arduino Nano 33 IoT (SAMD21) | Teensy 3.x / 4.x | Linux x86 / EtherCAT |
-|---|---|---|---|---|
-| `TrapezoidalProfile` | ✅ Full support | ✅ Full support | ✅ Full support | ✅ Full support |
-| `TrajectoryGroup` | ✅ Full support | ✅ Full support | ✅ Full support | ✅ Full support |
-| `CartesianMove` + `LinePath` | ⚠️ Works, slow SLERP | ✅ Full support | ✅ Full support | ✅ Full support |
-| `CartesianMove` + `ArcPath` | ⚠️ Too slow for real-time | ✅ Full support | ✅ Full support | ✅ Full support |
+The library compiles and runs on any platform with a C++11 compiler. The limiting factor for `CartesianMove` (which calls `sinf`, `cosf`, and `acosf` every control tick) is whether the processor has a hardware FPU.
 
-### Trig function cost by platform
+**How to find your board's architecture:** look up your board's MCU in its datasheet or the Arduino board manager, then find it in the table below.
 
-All `float` math on processors without an FPU is emulated in software. The difference between platforms is how efficiently that software runs:
+---
 
-| Function | Arduino Uno (8-bit AVR, 16 MHz) | Arduino Nano 33 IoT (32-bit ARM, 48 MHz) |
-|---|---|---|
-| `sqrtf()` | ~50 µs | ~1–3 µs |
-| `sinf()` / `cosf()` | ~100–200 µs each | ~2–5 µs each |
-| `acosf()` | ~200–400 µs | ~3–8 µs |
+### 8-bit AVR — no FPU
+**Boards:** Arduino Uno, Nano, Pro Mini (ATmega328P) · Arduino Mega 2560 (ATmega2560) · Arduino Leonardo, Micro (ATmega32U4)
 
-Neither processor has a hardware FPU, but the Nano 33 IoT's 32-bit Cortex-M0+ runs ARM's optimized soft-float library — roughly 20–50× faster than AVR soft-float. `CartesianMove` + `ArcPath` costs ~5–10 µs per tick on the Nano 33 IoT, which is fully real-time capable at 1 kHz and well within any servo update rate.
+| Class | Support |
+|---|---|
+| `TrapezoidalProfile` | ✅ Full support |
+| `TrajectoryGroup` | ✅ Full support |
+| `CartesianMove` + `LinePath` | ⚠️ Works, but SLERP adds ~500–1000 µs per tick |
+| `CartesianMove` + `ArcPath` | ⚠️ Works, but ~1–1.4 ms per tick — not recommended for real-time |
 
-### Arduino Uno notes
+All float math is software-emulated. `sinf()`/`cosf()` cost ~100–200 µs each at 16 MHz; `acosf()` costs ~200–400 µs. `TrapezoidalProfile::evaluate()` uses only arithmetic and is fast on any platform.
 
-**`TrapezoidalProfile` and `TrajectoryGroup`** use only `sqrtf()` once at plan time and plain arithmetic in `evaluate()`. They are fully suitable for Uno.
+**Recommended approach on AVR:** use `TrapezoidalProfile` + `TrajectoryGroup` for joint-space moves. Compute inverse kinematics once at plan time to convert your target pose into joint angles, then feed those angles into `TrajectoryGroup`. This leaves the CPU free for servo output and communication.
 
-**`CartesianMove` + `ArcPath`** calls `sinf()` and `cosf()` every control tick for position, plus `acosf()` and additional `sinf()` calls for orientation SLERP — totalling ~1–1.4 ms per `evaluate()` call. At RC servo rates (50 Hz) this technically fits in the 20 ms budget, but leaves almost no headroom and is not recommended.
+SRAM is the tighter constraint: ATmega328P has 2 KB total. A 4-axis `TrajectoryGroup` uses ~170 bytes, leaving ~1.8 KB for the Arduino runtime and your sketch.
 
-**Recommended approach for Uno:** use `TrapezoidalProfile` and `TrajectoryGroup` for joint-space moves. Compute inverse kinematics once at plan time to convert your target Cartesian pose into joint angles, then feed those angles into `TrajectoryGroup`. This is fast, deterministic, and leaves the CPU free for communication and servo output.
+---
 
-### Arduino Nano 33 IoT notes
+### 32-bit ARM Cortex-M0 / M0+ / M3 — no FPU
+**Boards:** Arduino Zero, Nano 33 IoT, MKR series (SAMD21, Cortex-M0+) · Arduino Due (SAM3X8E, Cortex-M3) · Arduino Nano RP2040 Connect, Raspberry Pi Pico (RP2040, Cortex-M0+)
 
-All classes are fully supported. The SAMD21's 32-bit ARM core and ARM soft-float library make trig functions fast enough for real-time Cartesian path following at typical servo update rates. 32 KB SRAM and 256 KB flash leave ample headroom.
+| Class | Support |
+|---|---|
+| `TrapezoidalProfile` | ✅ Full support |
+| `TrajectoryGroup` | ✅ Full support |
+| `CartesianMove` + `LinePath` | ✅ Full support |
+| `CartesianMove` + `ArcPath` | ✅ Full support |
 
-### Memory
+No hardware FPU, but ARM's optimized soft-float library runs 20–50× faster than AVR soft-float because these are 32-bit cores. `sinf()`/`cosf()` cost ~2–5 µs; `acosf()` costs ~3–8 µs. `CartesianMove` + `ArcPath` + SLERP totals ~15–30 µs per tick — fully real-time at 1 kHz. SRAM ranges from 32 KB (SAMD21) to 264 KB (RP2040); no memory concerns.
 
-| Board | SRAM | 4-DOF TrajectoryGroup footprint | Headroom |
-|---|---|---|---|
-| Arduino Uno (ATmega328P) | 2 KB | ~170 bytes | Tight — feasible, leave room for sketch and runtime (~400 bytes) |
-| Arduino Nano 33 IoT (SAMD21) | 32 KB | ~170 bytes | Comfortable |
-| Teensy 4.x (iMXRT1062) | 1 MB | ~170 bytes | No concern |
+---
+
+### 32-bit ARM Cortex-M4F / M7 — hardware FPU
+**Boards:** Teensy 3.2, 3.5, 3.6 (Cortex-M4F) · Teensy 4.0, 4.1 (Cortex-M7) · Arduino Nano 33 BLE / BLE Sense (nRF52840, Cortex-M4F) · most STM32F4 / STM32H7 based boards
+
+| Class | Support |
+|---|---|
+| All classes | ✅ Full support, hardware-accelerated float |
+
+The hardware FPU executes single-precision float in 1–2 clock cycles. All trig functions cost well under 1 µs. Every class in this library is fully real-time capable at several kHz on these boards.
+
+---
+
+### ESP32 — hardware FPU (Xtensa LX6/LX7 core)
+**Boards:** ESP32 DevKit and variants · ESP32-S2 · ESP32-S3
+
+| Class | Support |
+|---|---|
+| All classes | ✅ Full support |
+
+The ESP32 and ESP32-S series include a hardware single-precision FPU. All classes are fully supported. Note: the **ESP32-C series** (RISC-V core, no FPU) behaves more like the Cortex-M0+ tier — still fine for all classes, just without hardware float acceleration.
+
+---
+
+### Linux / macOS / Windows (x86-64)
+All classes fully supported. This is the primary target for development, unit-testing, and validation against MATLAB reference traces before deploying to hardware.
+
+---
 
 ### Compiler requirement
 
-Requires C++11 or later. Arduino IDE 1.8+ is supported for all ARM-based boards. For AVR (Uno), Arduino IDE 1.8+ ships avr-gcc 7.3 with C++11 support. Older IDE versions (pre-1.6.6) will fail to compile.
+Requires C++11 or later. Arduino IDE 1.8+ ships with C++11-capable compilers for all supported architectures. Older IDE versions (pre-1.6.6) will fail to compile due to missing C++11 features (`= default`, struct member initializers, `<cmath>`).
 
 ---
 
