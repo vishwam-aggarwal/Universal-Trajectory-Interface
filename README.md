@@ -18,40 +18,48 @@ No hardware dependencies. Runs identically on Arduino, Teensy, and Linux x86.
 
 ## Platform compatibility
 
-| Class | Arduino Uno (ATmega328P) | Teensy 3.x / 4.x | Linux x86 / EtherCAT |
-|---|---|---|---|
-| `TrapezoidalProfile` | ✅ Full support | ✅ Full support | ✅ Full support |
-| `TrajectoryGroup` | ✅ Full support | ✅ Full support | ✅ Full support |
-| `CartesianMove` + `LinePath` | ⚠️ Works, but SLERP is slow (no FPU) | ✅ Full support | ✅ Full support |
-| `CartesianMove` + `ArcPath` | ⚠️ Works, but too slow for real-time use | ✅ Full support | ✅ Full support |
+| Class | Arduino Uno (ATmega328P) | Arduino Nano 33 IoT (SAMD21) | Teensy 3.x / 4.x | Linux x86 / EtherCAT |
+|---|---|---|---|---|
+| `TrapezoidalProfile` | ✅ Full support | ✅ Full support | ✅ Full support | ✅ Full support |
+| `TrajectoryGroup` | ✅ Full support | ✅ Full support | ✅ Full support | ✅ Full support |
+| `CartesianMove` + `LinePath` | ⚠️ Works, slow SLERP | ✅ Full support | ✅ Full support | ✅ Full support |
+| `CartesianMove` + `ArcPath` | ⚠️ Too slow for real-time | ✅ Full support | ✅ Full support | ✅ Full support |
+
+### Trig function cost by platform
+
+All `float` math on processors without an FPU is emulated in software. The difference between platforms is how efficiently that software runs:
+
+| Function | Arduino Uno (8-bit AVR, 16 MHz) | Arduino Nano 33 IoT (32-bit ARM, 48 MHz) |
+|---|---|---|
+| `sqrtf()` | ~50 µs | ~1–3 µs |
+| `sinf()` / `cosf()` | ~100–200 µs each | ~2–5 µs each |
+| `acosf()` | ~200–400 µs | ~3–8 µs |
+
+Neither processor has a hardware FPU, but the Nano 33 IoT's 32-bit Cortex-M0+ runs ARM's optimized soft-float library — roughly 20–50× faster than AVR soft-float. `CartesianMove` + `ArcPath` costs ~5–10 µs per tick on the Nano 33 IoT, which is fully real-time capable at 1 kHz and well within any servo update rate.
 
 ### Arduino Uno notes
 
-The ATmega328P has no hardware floating-point unit. All `float` math is emulated in software by the compiler, which makes trigonometric functions expensive:
+**`TrapezoidalProfile` and `TrajectoryGroup`** use only `sqrtf()` once at plan time and plain arithmetic in `evaluate()`. They are fully suitable for Uno.
 
-| Function | Cost on 16 MHz AVR |
-|---|---|
-| `sqrtf()` | ~50 µs |
-| `sinf()` / `cosf()` | ~100–200 µs each |
-| `acosf()` | ~200–400 µs |
+**`CartesianMove` + `ArcPath`** calls `sinf()` and `cosf()` every control tick for position, plus `acosf()` and additional `sinf()` calls for orientation SLERP — totalling ~1–1.4 ms per `evaluate()` call. At RC servo rates (50 Hz) this technically fits in the 20 ms budget, but leaves almost no headroom and is not recommended.
 
-**`TrapezoidalProfile` and `TrajectoryGroup`** use only `sqrtf()` (once, at plan time) and simple arithmetic in the real-time `evaluate()` path. They are fully suitable for Uno.
+**Recommended approach for Uno:** use `TrapezoidalProfile` and `TrajectoryGroup` for joint-space moves. Compute inverse kinematics once at plan time to convert your target Cartesian pose into joint angles, then feed those angles into `TrajectoryGroup`. This is fast, deterministic, and leaves the CPU free for communication and servo output.
 
-**`CartesianMove` + `ArcPath`** calls `sinf()` and `cosf()` every control tick for position, plus `acosf()` and additional `sinf()` calls for orientation SLERP — adding up to ~1–1.4 ms per `evaluate()` call. At RC servo rates (50 Hz), this technically fits in the 20 ms budget, but leaves almost no headroom and is not recommended.
+### Arduino Nano 33 IoT notes
 
-**Recommended approach for Uno:** use `TrapezoidalProfile` and `TrajectoryGroup` for joint-space moves. Compute inverse kinematics once at plan time to convert your target Cartesian pose into joint angles, then feed those joint angles into `TrajectoryGroup`. This is fast, deterministic, and leaves the CPU free for communication and servo output.
+All classes are fully supported. The SAMD21's 32-bit ARM core and ARM soft-float library make trig functions fast enough for real-time Cartesian path following at typical servo update rates. 32 KB SRAM and 256 KB flash leave ample headroom.
 
-For Cartesian path following on embedded hardware, a Teensy 4.0/4.1 (Cortex-M7 with FPU) is a much better fit.
+### Memory
 
-### Memory (Arduino Uno)
-
-- `TrapezoidalProfile` instance: ~38 bytes SRAM
-- `TrajectoryGroup` (6-axis): ~18 bytes SRAM + 6 profile pointers
-- A 4-DOF `TrajectoryGroup` with 4 `TrapezoidalProfile` instances: ~170 bytes total — feasible within the Uno's 2 KB SRAM
+| Board | SRAM | 4-DOF TrajectoryGroup footprint | Headroom |
+|---|---|---|---|
+| Arduino Uno (ATmega328P) | 2 KB | ~170 bytes | Tight — feasible, leave room for sketch and runtime (~400 bytes) |
+| Arduino Nano 33 IoT (SAMD21) | 32 KB | ~170 bytes | Comfortable |
+| Teensy 4.x (iMXRT1062) | 1 MB | ~170 bytes | No concern |
 
 ### Compiler requirement
 
-Requires C++11 or later. Arduino IDE 1.8+ (ships avr-gcc 7.3) is supported. Older IDE versions (pre-1.6.6) will fail to compile due to missing C++11 features.
+Requires C++11 or later. Arduino IDE 1.8+ is supported for all ARM-based boards. For AVR (Uno), Arduino IDE 1.8+ ships avr-gcc 7.3 with C++11 support. Older IDE versions (pre-1.6.6) will fail to compile.
 
 ---
 
@@ -81,7 +89,7 @@ Copy the `src/` folder into your project or add this repo as a library. Include 
 ```cpp
 #include "TrapezoidalProfile.h"   // single-axis profile
 #include "TrajectoryGroup.h"      // multi-axis sync (joint space)
-#include "CartesianMove.h"        // Cartesian path moves (Teensy/x86 recommended)
+#include "CartesianMove.h"        // Cartesian path moves (Nano 33 IoT / Teensy / x86)
 ```
 
 ---
