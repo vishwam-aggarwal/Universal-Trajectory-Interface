@@ -1,0 +1,10 @@
+# Arduino IDE syntax highlighting
+# Types (blue)
+ITrajectoryProfile	KEYWORD1
+TrapezoidalProfile	KEYWORD1
+TrajectoryLimits	KEYWORD1
+
+# Methods (orange)
+plan	KEYWORD2
+evaluate	KEYWORD2
+getDuration	KEYWORD2
