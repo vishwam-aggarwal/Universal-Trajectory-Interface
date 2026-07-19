@@ -5,7 +5,7 @@
 class TrapezoidalProfile : public ITrajectoryProfile {
 public:
     bool plan(float q0, float qf, const TrajectoryLimits& limits,
-              float targetDuration = 0.0f) override;
+              float targetDuration) override;
 
     bool evaluate(float t, float& pos, float& vel, float& accel) const override;
 

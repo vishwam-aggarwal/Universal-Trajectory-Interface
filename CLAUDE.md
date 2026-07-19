@@ -65,7 +65,19 @@ public:
     // targetDuration > 0  -> stretch (time-dilate) the move to exactly this
     //                        duration; used later for multi-axis sync
     virtual bool plan(float q0, float qf, const TrajectoryLimits& limits,
-                       float targetDuration = 0.0f) = 0;
+                       float targetDuration) = 0;
+
+    // Convenience overload for callers going through an ITrajectoryProfile&/*
+    // who don't need to specify targetDuration. Deliberately non-virtual and
+    // forwards to the full signature -- a default argument on the virtual
+    // itself would resolve statically off the pointer/reference's declared
+    // type, not polymorphically off the override actually invoked, so a
+    // future implementation with a different default would be silently
+    // ignored through a base pointer. See ITrajectoryProfile.h for the full
+    // rationale.
+    bool plan(float q0, float qf, const TrajectoryLimits& limits) {
+        return plan(q0, qf, limits, 0.0f);
+    }
 
     // Pure query, no side effects. Clamped for t < 0 or t > duration.
     // Returns true while still in motion, false once settled at qf.
@@ -78,12 +90,25 @@ public:
 - `evaluate()` outputs **kinematic** quantities only (pos/vel/accel) — no
   torque. Torque feedforward would require a dynamics model (per-link
   inertia) that doesn't exist yet; that's out of scope here.
+- **Every new `ITrajectoryProfile` implementation's `plan()` override must
+  declare all 4 params with no default of its own** (matching the pure
+  virtual exactly, e.g. `TrapezoidalProfile::plan(...)`  below) — the
+  3-arg convenience path is the base class's job, not each override's. Also
+  note that a derived class declaring its own `plan(...)` **hides** the
+  base's 3-arg convenience overload from name lookup on that concrete type
+  (regular C++ name-hiding, independent of the virtual-dispatch fix above)
+  — code holding a concrete `TrapezoidalProfile` (not an `ITrajectoryProfile&`/`*`)
+  must call the full 4-arg `plan(q0, qf, limits, 0.0f)` explicitly, as the
+  desktop tests do.
 
 ### `TrapezoidalProfile : ITrajectoryProfile` — build this first
 
 Classic trapezoidal velocity profile (accel / cruise / decel), with the
 degenerate case of a move too short to reach `vMax` (triangular profile)
-handled internally. `jMax` in `TrajectoryLimits` is ignored.
+handled internally. `jMax` in `TrajectoryLimits` is ignored. Implements the
+full 4-arg `plan(q0, qf, limits, targetDuration)` via `override`, with no
+default argument of its own (see the note on `ITrajectoryProfile::plan()`
+above).
 
 ### `SCurveProfile : ITrajectoryProfile` — build after Trapezoidal is validated
 

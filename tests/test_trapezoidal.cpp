@@ -36,7 +36,7 @@ int main() {
         printf("-- 1. zero-distance move --\n");
         TrapezoidalProfile p;
         TrajectoryLimits lim{ 10.0f, 10.0f };
-        check(p.plan(5.0f, 5.0f, lim),   "plan returns true");
+        check(p.plan(5.0f, 5.0f, lim, 0.0f),   "plan returns true");
         checkNear(p.getDuration(), 0.0f, TOL, "duration == 0");
         evalCheck(p, 0.0f, 5.0f, 0.0f, 0.0f, false, "t=0");
         evalCheck(p, 1.0f, 5.0f, 0.0f, 0.0f, false, "t=1 (settled)");
@@ -50,7 +50,7 @@ int main() {
         printf("\n-- 2. trapezoidal  q0=0  qf=20  vMax=10  aMax=10 --\n");
         TrapezoidalProfile p;
         TrajectoryLimits lim{ 10.0f, 10.0f };
-        check(p.plan(0.0f, 20.0f, lim), "plan returns true");
+        check(p.plan(0.0f, 20.0f, lim, 0.0f), "plan returns true");
         checkNear(p.getDuration(), 3.0f, TOL, "duration == 3");
 
         evalCheck(p, 0.0f,   0.0f,   0.0f,  10.0f, true,  "t=0.0  accel start");
@@ -71,7 +71,7 @@ int main() {
         printf("\n-- 3. boundary triangular  q0=0  qf=10  vMax=10  aMax=10 --\n");
         TrapezoidalProfile p;
         TrajectoryLimits lim{ 10.0f, 10.0f };
-        check(p.plan(0.0f, 10.0f, lim), "plan returns true");
+        check(p.plan(0.0f, 10.0f, lim, 0.0f), "plan returns true");
         checkNear(p.getDuration(), 2.0f, TOL, "duration == 2");
 
         evalCheck(p, 0.5f,  1.25f,  5.0f,  10.0f, true,  "t=0.5  accel");
@@ -88,7 +88,7 @@ int main() {
         printf("\n-- 4. short triangular  q0=0  qf=3  vMax=10  aMax=10 --\n");
         TrapezoidalProfile p;
         TrajectoryLimits lim{ 10.0f, 10.0f };
-        check(p.plan(0.0f, 3.0f, lim), "plan returns true");
+        check(p.plan(0.0f, 3.0f, lim, 0.0f), "plan returns true");
 
         float t1 = sqrtf(3.0f / 10.0f);
         checkNear(p.getDuration(), 2.0f * t1, TOL, "duration == 2*sqrt(0.3)");
@@ -113,7 +113,7 @@ int main() {
         printf("\n-- 5. negative direction  q0=10  qf=0  vMax=10  aMax=10 --\n");
         TrapezoidalProfile p;
         TrajectoryLimits lim{ 10.0f, 10.0f };
-        check(p.plan(10.0f, 0.0f, lim), "plan returns true");
+        check(p.plan(10.0f, 0.0f, lim, 0.0f), "plan returns true");
         checkNear(p.getDuration(), 2.0f, TOL, "duration == 2");
 
         evalCheck(p, 0.5f,  8.75f, -5.0f, -10.0f, true,  "t=0.5  accel (neg)");
@@ -129,7 +129,7 @@ int main() {
         printf("\n-- 6. t < 0 clamping --\n");
         TrapezoidalProfile p;
         TrajectoryLimits lim{ 10.0f, 10.0f };
-        p.plan(0.0f, 20.0f, lim);
+        p.plan(0.0f, 20.0f, lim, 0.0f);
         evalCheck(p, -1.0f, 0.0f, 0.0f, 10.0f, true, "t=-1 clamped to t=0");
     }
 

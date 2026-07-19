@@ -16,6 +16,48 @@ No hardware dependencies. Runs identically on Arduino, Teensy, and Linux x86.
 
 ---
 
+## Usage: planning a move
+
+Every profile (and `CartesianMove`'s underlying profile) is driven through `ITrajectoryProfile`:
+
+```cpp
+class ITrajectoryProfile {
+public:
+    // Full signature -- targetDuration = 0 plans for minimum time given the
+    // limits; > 0 time-dilates the move to exactly that duration (used by
+    // TrajectoryGroup to synchronize multiple axes).
+    virtual bool plan(float q0, float qf, const TrajectoryLimits& limits,
+                       float targetDuration) = 0;
+
+    // 3-arg convenience overload -- only reachable through an
+    // ITrajectoryProfile&/*, not through a concrete type directly (see below).
+    bool plan(float q0, float qf, const TrajectoryLimits& limits);
+
+    virtual bool evaluate(float t, float& pos, float& vel, float& accel) const = 0;
+    virtual float getDuration() const = 0;
+};
+```
+
+**Through a base reference/pointer**, both forms work — this is the common case inside `TrajectoryGroup` and `CartesianMove`, which only ever hold an `ITrajectoryProfile*`:
+
+```cpp
+ITrajectoryProfile* profile = &myTrapezoidalProfile;
+profile->plan(q0, qf, limits);              // targetDuration defaults to 0.0f
+profile->plan(q0, qf, limits, 1.5f);         // explicit duration
+```
+
+**Through a concrete type directly** (e.g. a `TrapezoidalProfile` local variable, as the desktop tests do), only the full 4-arg form is reachable — a derived class declaring its own `plan(...)` override hides the base class's 3-arg convenience overload from name lookup on that concrete type, per ordinary C++ member-hiding rules:
+
+```cpp
+TrapezoidalProfile p;
+p.plan(q0, qf, limits, 0.0f);   // OK -- must pass targetDuration explicitly
+// p.plan(q0, qf, limits);      // does NOT compile -- hidden by TrapezoidalProfile::plan
+```
+
+This split exists so that `targetDuration`'s default resolves **polymorphically** (dispatching to whatever concrete profile is actually behind the pointer) rather than **statically** off the pointer's declared type — a default argument on a `virtual` function itself is resolved at the call site based on the static type, which would silently ignore a different default on some future `ITrajectoryProfile` implementation if called through a base pointer.
+
+---
+
 ## Platform compatibility
 
 The library compiles and runs on any platform with a C++11 compiler. The limiting factor for `CartesianMove` (which calls `sinf`, `cosf`, and `acosf` every control tick) is whether the processor has a hardware FPU.
