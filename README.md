@@ -162,6 +162,8 @@ Copy the `src/` folder into your project or add this repo as a library. Include 
 #include "CartesianMove.h"        // Cartesian path moves (Nano 33 IoT / Teensy / x86)
 ```
 
+See `examples/SimpleTrajectoryDemo` for a minimal, dependency-free sketch: one `TrapezoidalProfile` driving a stand-in `SimulatedMotor` (just remembers the commanded position — no real actuator, no external library needed). Compile-verified on Uno, Nano, Mega, Leonardo, Nano 33 IoT (SAMD21), Teensy 4.0, and Teensy 3.2.
+
 ---
 
 ## Repository layout
@@ -178,6 +180,8 @@ src/                  # library source — no build-system or hardware dependenc
   Vec3.h
   Quatf.h
 tests/                # desktop unit tests (plain C++, no hardware)
+examples/             # Arduino sketches (no hardware required to compile/run)
+  SimpleTrajectoryDemo/
 docs/                 # educational reference (explainer.html)
 CMakeLists.txt
 library.properties    # Arduino/PlatformIO metadata
@@ -188,7 +192,7 @@ library.properties    # Arduino/PlatformIO metadata
 ## Roadmap
 
 - [ ] `SCurveProfile` — jerk-limited (S-curve) profile using `jMax`. Will be implemented once `TrapezoidalProfile` has been physically validated on hardware.
-- [ ] Arduino example sketch — single RC servo joint driven by `TrapezoidalProfile`.
+- [x] Arduino example sketch — `TrapezoidalProfile` driving a simulated motor; compiles on AVR, SAMD, and Teensy. Physical validation against a real RC servo joint (via Universal-Motor-Interface, composed at the Motion Device layer) is still open.
 - [ ] Blend / re-plan — interrupt a move mid-motion and transition smoothly into a new target.
 
 ---
