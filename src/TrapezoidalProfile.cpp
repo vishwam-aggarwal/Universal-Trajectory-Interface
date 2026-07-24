@@ -1,5 +1,5 @@
 #include "TrapezoidalProfile.h"
-#include <cmath>
+#include <math.h>
 
 bool TrapezoidalProfile::plan(float q0, float qf, const TrajectoryLimits& limits,
                                float targetDuration) {

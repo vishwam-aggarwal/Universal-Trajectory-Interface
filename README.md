@@ -78,6 +78,8 @@ The library compiles and runs on any platform with a C++11 compiler. The limitin
 
 All float math is software-emulated. `sinf()`/`cosf()` cost ~100–200 µs each at 16 MHz; `acosf()` costs ~200–400 µs. `TrapezoidalProfile::evaluate()` uses only arithmetic and is fast on any platform.
 
+**Toolchain note:** avr-gcc ships no C++ standard library at all — no `<cmath>`, no `<vector>`, nothing beyond the plain C runtime. The library uses `<math.h>` internally for this reason (functionally identical to `<cmath>` here, since no call in this codebase is `std::`-qualified). This is transparent to callers; it's mentioned only because it's the reason AVR compiles at all.
+
 **Recommended approach on AVR:** use `TrapezoidalProfile` + `TrajectoryGroup` for joint-space moves. Compute inverse kinematics once at plan time to convert your target pose into joint angles, then feed those angles into `TrajectoryGroup`. This leaves the CPU free for servo output and communication.
 
 SRAM is the tighter constraint: ATmega328P has 2 KB total. A 4-axis `TrajectoryGroup` uses ~170 bytes, leaving ~1.8 KB for the Arduino runtime and your sketch.
@@ -127,7 +129,7 @@ All classes fully supported. This is the primary target for development, unit-te
 
 ### Compiler requirement
 
-Requires C++11 or later. Arduino IDE 1.8+ ships with C++11-capable compilers for all supported architectures. Older IDE versions (pre-1.6.6) will fail to compile due to missing C++11 features (`= default`, struct member initializers, `<cmath>`).
+Requires C++11 or later. Arduino IDE 1.8+ ships with C++11-capable compilers for all supported architectures. Older IDE versions (pre-1.6.6) will fail to compile due to missing C++11 features (`= default`, struct member initializers).
 
 ---
 
