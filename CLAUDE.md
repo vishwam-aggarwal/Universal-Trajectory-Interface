@@ -258,7 +258,12 @@ src/                  # the library itself, no build-system assumptions baked in
   TrajectoryLimits.h
   TrapezoidalProfile.h / .cpp
 tests/                # desktop unit tests (plain C++, no hardware)
-examples/              # Arduino sketches (see SimpleTrajectoryDemo below)
+examples/              # Arduino sketches (see SimpleTrajectoryDemo below).
+                       # Folder must be named exactly "examples" -- this is
+                       # an Arduino IDE hard requirement (File > Examples
+                       # discovery), not a stylistic convention, since
+                       # library.properties makes this a real Arduino
+                       # library. Do not rename it.
 library.properties     # Arduino/PlatformIO library metadata, once ready
 CMakeLists.txt         # desktop build for tests
 ```
