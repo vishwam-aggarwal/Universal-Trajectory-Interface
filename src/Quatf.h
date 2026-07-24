@@ -1,5 +1,5 @@
 #pragma once
-#include <cmath>
+#include <math.h>
 
 // Unit quaternion representing orientation. Convention: w + xi + yj + zk.
 struct Quatf {

@@ -46,6 +46,22 @@ shouldn't be any hardware-specific glue at all).
   caller uses consistently. Not robot-specific; should be equally usable for
   a CNC axis or a gimbal as for a robot joint.
 
+## AVR (arduino:avr:*) support
+
+`arduino:avr:*` (Uno, Nano, Mega) is a supported compile target alongside
+SAMD/ARM and Linux x86. avr-gcc ships no C++ standard library (no `<cmath>`,
+`<vector>`, etc.), only the C `math.h`. The fix was swapping
+`#include <cmath>` → `#include <math.h>` in the four files that used it
+(`Vec3.h`, `Quatf.h`, `TrapezoidalProfile.cpp`, `ArcPath.cpp`) — none of them
+called anything via `std::`, so this was a drop-in change, not a rewrite.
+Because Arduino's build system compiles every `.cpp` in `src/` regardless of
+what the sketch includes, this had to be fixed everywhere, not just in the
+joint-space files, even though the Cartesian-path classes
+(`ArcPath`/`LinePath`/`CartesianMove`/`Vec3`/`Quatf`) are compile-verified on
+AVR only — not performance-verified. Running float trig/sqrt on a 16 MHz,
+no-FPU AVR chip is expected to be slow; that's an accepted tradeoff for a
+sketch that never calls them, not a bug to design around.
+
 ## Class structure (agreed design — implement to this spec)
 
 ### `ITrajectoryProfile` — single scalar axis, the reusable atomic unit

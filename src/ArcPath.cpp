@@ -1,5 +1,5 @@
 #include "ArcPath.h"
-#include <cmath>
+#include <math.h>
 
 ArcPath::ArcPath(const Vec3& center, const Vec3& startPoint,
                  const Vec3& normal,  float sweepAngle)
