@@ -258,7 +258,7 @@ src/                  # the library itself, no build-system assumptions baked in
   TrajectoryLimits.h
   TrapezoidalProfile.h / .cpp
 tests/                # desktop unit tests (plain C++, no hardware)
-examples/              # later: an Arduino sketch driving one RC servo joint
+examples/              # Arduino sketches (see SimpleTrajectoryDemo below)
 library.properties     # Arduino/PlatformIO library metadata, once ready
 CMakeLists.txt         # desktop build for tests
 ```
@@ -268,3 +268,15 @@ CMakeLists.txt         # desktop build for tests
 Implement `ITrajectoryProfile` and `TrapezoidalProfile` exactly to the spec
 above, plus a desktop test scaffold. I'll provide the MATLAB source next —
 ask me where to find it before starting the planning math.
+
+## Example sketch
+
+`examples/SimpleTrajectoryDemo` exists: one `TrapezoidalProfile` driving a
+`SimulatedMotor` (a struct local to the sketch that just remembers the
+commanded position — no real actuator, no dependency on
+Universal-Motor-Interface). Compile-verified via `arduino-cli` on Uno, Nano,
+Mega, Leonardo, Nano 33 IoT (SAMD21), Teensy 4.0, and Teensy 3.2. This
+satisfies "Arduino example sketch" in the README roadmap, but **not** the
+"physical validation on one real RC servo joint" goal in Testing goal above
+— that still requires real hardware and Universal-Motor-Interface at the
+Motion Device layer, and hasn't been done.
