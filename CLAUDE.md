@@ -109,13 +109,24 @@ public:
 - **Every new `ITrajectoryProfile` implementation's `plan()` override must
   declare all 4 params with no default of its own** (matching the pure
   virtual exactly, e.g. `TrapezoidalProfile::plan(...)`  below) — the
-  3-arg convenience path is the base class's job, not each override's. Also
-  note that a derived class declaring its own `plan(...)` **hides** the
-  base's 3-arg convenience overload from name lookup on that concrete type
-  (regular C++ name-hiding, independent of the virtual-dispatch fix above)
-  — code holding a concrete `TrapezoidalProfile` (not an `ITrajectoryProfile&`/`*`)
-  must call the full 4-arg `plan(q0, qf, limits, 0.0f)` explicitly, as the
-  desktop tests do.
+  3-arg convenience path is the base class's job, not each override's.
+- **Every new implementation must also add `using ITrajectoryProfile::plan;`
+  in its own class body**, alongside the `plan(...)` override (see
+  `TrapezoidalProfile.h`). Without it, declaring the override **hides**
+  every base-class overload of that name from lookup on the concrete type
+  (ordinary C++ name-hiding — lookup stops at the first class scope where
+  the name appears at all, before overload resolution runs — independent
+  of the virtual-dispatch fix above, and it bites regardless of whether the
+  override's signature actually conflicts with the hidden overload or not).
+  Originally this repo's answer to that was "callers holding a concrete
+  type must always pass all 4 args explicitly" (the desktop tests still do,
+  and that's still completely valid) — but `using` removes the restriction
+  instead of just documenting around it, so both call forms work whether
+  you're holding an `ITrajectoryProfile&`/`*` or a concrete
+  `TrapezoidalProfile` directly. Forgetting the `using` line on a future
+  implementation (e.g. `SCurveProfile`) won't fail to compile — it'll just
+  silently bring back the "3-arg form only works through a base
+  reference" restriction for that one class, so don't skip it.
 
 ### `TrapezoidalProfile : ITrajectoryProfile` — build this first
 
