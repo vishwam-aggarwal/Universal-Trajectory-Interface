@@ -29,8 +29,7 @@ public:
     virtual bool plan(float q0, float qf, const TrajectoryLimits& limits,
                        float targetDuration) = 0;
 
-    // 3-arg convenience overload -- only reachable through an
-    // ITrajectoryProfile&/*, not through a concrete type directly (see below).
+    // 3-arg convenience overload -- targetDuration defaults to 0.0f.
     bool plan(float q0, float qf, const TrajectoryLimits& limits);
 
     virtual bool evaluate(float t, float& pos, float& vel, float& accel) const = 0;
@@ -38,23 +37,26 @@ public:
 };
 ```
 
-**Through a base reference/pointer**, both forms work — this is the common case inside `TrajectoryGroup` and `CartesianMove`, which only ever hold an `ITrajectoryProfile*`:
-
-```cpp
-ITrajectoryProfile* profile = &myTrapezoidalProfile;
-profile->plan(q0, qf, limits);              // targetDuration defaults to 0.0f
-profile->plan(q0, qf, limits, 1.5f);         // explicit duration
-```
-
-**Through a concrete type directly** (e.g. a `TrapezoidalProfile` local variable, as the desktop tests do), only the full 4-arg form is reachable — a derived class declaring its own `plan(...)` override hides the base class's 3-arg convenience overload from name lookup on that concrete type, per ordinary C++ member-hiding rules:
+Both forms work whether you're going through a base pointer/reference or holding a concrete profile type directly:
 
 ```cpp
 TrapezoidalProfile p;
-p.plan(q0, qf, limits, 0.0f);   // OK -- must pass targetDuration explicitly
-// p.plan(q0, qf, limits);      // does NOT compile -- hidden by TrapezoidalProfile::plan
+p.plan(q0, qf, limits);              // targetDuration defaults to 0.0f
+p.plan(q0, qf, limits, 1.5f);        // explicit duration
+
+ITrajectoryProfile* base = &p;
+base->plan(q0, qf, limits);          // same defaulting, through a base pointer
 ```
 
-This split exists so that `targetDuration`'s default resolves **polymorphically** (dispatching to whatever concrete profile is actually behind the pointer) rather than **statically** off the pointer's declared type — a default argument on a `virtual` function itself is resolved at the call site based on the static type, which would silently ignore a different default on some future `ITrajectoryProfile` implementation if called through a base pointer.
+That works without falling into the usual "default argument on a `virtual` function" trap: a default value written directly on a virtual signature resolves off the **static** type of the call expression, not the object's actual runtime type — so a pointer declared as the base class could silently use a different default than one declared as the derived class, for the identical object. Instead, `targetDuration`'s default lives on a genuinely separate, non-virtual 3-arg overload in `ITrajectoryProfile` that forwards to the pure-virtual 4-arg one — the forwarding call still dispatches virtually, so it always reaches whatever concrete profile is actually behind it, correctly, regardless of how it was called.
+
+The one thing this requires from every concrete implementation: declaring your own `plan(...)` override **hides** every base-class overload of that name from lookup on your concrete type (ordinary C++ member-hiding — lookup stops at the first class scope where the name appears at all, before overload resolution even runs), which would otherwise make the 3-arg form uncallable except through a base reference. `TrapezoidalProfile` pulls it back into scope with one line alongside its override:
+
+```cpp
+using ITrajectoryProfile::plan;
+```
+
+Any future `ITrajectoryProfile` implementation (e.g. a planned `SCurveProfile`) needs the same line for the 3-arg convenience form to work when called on its own concrete type.
 
 ---
 
