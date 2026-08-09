@@ -29,9 +29,11 @@ void setup() {
     limits.vMax = 90.0f;   // units/second
     limits.aMax = 180.0f;  // units/second^2
 
-    // 4-arg form required here: TrapezoidalProfile::plan() hides the base
-    // class's 3-arg convenience overload on a concrete (non-pointer) type.
-    profile.plan(0.0f, 90.0f, limits, 0.0f);
+    // 3-arg form -- targetDuration defaults to 0.0f (minimum time given
+    // the limits above). Works directly on this concrete TrapezoidalProfile,
+    // not just through an ITrajectoryProfile&/*, thanks to the `using
+    // ITrajectoryProfile::plan;` line in TrapezoidalProfile.h.
+    profile.plan(0.0f, 90.0f, limits);
     moveStartMs = millis();
 }
 
