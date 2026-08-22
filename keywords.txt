@@ -3,8 +3,23 @@
 ITrajectoryProfile	KEYWORD1
 TrapezoidalProfile	KEYWORD1
 TrajectoryLimits	KEYWORD1
+TrajectoryGroup	KEYWORD1
+IPathGeometry	KEYWORD1
+LinePath	KEYWORD1
+ArcPath	KEYWORD1
+CartesianMove	KEYWORD1
+Vec3	KEYWORD1
+Quatf	KEYWORD1
 
 # Methods (orange)
 plan	KEYWORD2
 evaluate	KEYWORD2
 getDuration	KEYWORD2
+getLength	KEYWORD2
+getCount	KEYWORD2
+dot	KEYWORD2
+cross	KEYWORD2
+magnitude	KEYWORD2
+magnitudeSq	KEYWORD2
+normalized	KEYWORD2
+slerp	KEYWORD2

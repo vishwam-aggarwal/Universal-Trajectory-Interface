@@ -18,29 +18,65 @@ bool TrapezoidalProfile::plan(float q0, float qf, const TrajectoryLimits& limits
         return true;
     }
 
+    // A real move needs both limits to be strictly positive -- vMax<=0 or
+    // aMax<=0 (including NaN, which fails every comparison) would otherwise
+    // divide by zero below and silently produce an infinite duration. Leave
+    // the profile invalid rather than fabricate a nonsensical one; the axis
+    // simply never moves (evaluate() reports parked at q0) until re-planned
+    // with sane limits.
+    if (!(limits.vMax > 0.0f) || !(limits.aMax > 0.0f)) {
+        _vPeak = 0.0f;
+        _t1 = _t2 = _t3 = 0.0f;
+        return false;
+    }
+
     float vMax = limits.vMax;
     float aMax = limits.aMax;
-    float t_a, t_v;
 
-    if (targetDuration <= 0.0f) {
-        // Minimum-time plan — port of Trap_calculateTimeSegments.m
-        float s_v = (vMax * vMax) / aMax;
-        if (displacement >= s_v) {
-            t_a    = vMax / aMax;
-            t_v    = t_a + (displacement - s_v) / vMax;
-            _vPeak = vMax;
-        } else {
-            t_a    = sqrtf(displacement / aMax);
-            t_v    = t_a;
-            _vPeak = aMax * t_a;
+    // Minimum-time plan — port of Trap_calculateTimeSegments.m. Always
+    // computed first: it's the answer when targetDuration<=0, and it's also
+    // the fastest this move can possibly go, which the time-dilation branch
+    // below needs as a floor.
+    float s_v = (vMax * vMax) / aMax;
+    float minT_a, minT_v, minVPeak;
+    if (displacement >= s_v) {
+        minT_a   = vMax / aMax;
+        minT_v   = minT_a + (displacement - s_v) / vMax;
+        minVPeak = vMax;
+    } else {
+        minT_a   = sqrtf(displacement / aMax);
+        minT_v   = minT_a;
+        minVPeak = aMax * minT_a;
+    }
+    float minDuration = minT_a + minT_v;
+
+    float t_a, t_v;
+    bool requestSatisfied = true;
+
+    if (targetDuration <= 0.0f || targetDuration <= minDuration) {
+        // Either no dilation requested, or the requested duration is not
+        // actually slower than the minimum-time plan -- use the min-time
+        // plan as-is. (Solving the quadratic below for T <= minDuration
+        // would produce a vPeak that exceeds vMax, or -- for T below the
+        // absolute aMax-only floor -- a nonsensical duration far longer
+        // than either T or minDuration; see the regression tests.)
+        t_a    = minT_a;
+        t_v    = minT_v;
+        _vPeak = minVPeak;
+        if (targetDuration > 0.0f && targetDuration < minDuration) {
+            requestSatisfied = false;
         }
     } else {
         // Time-dilation: find vPeak such that profile takes exactly targetDuration.
         // From t3 = vPeak/aMax + displacement/vPeak, solving the quadratic:
         //   vPeak^2/aMax - T*vPeak + displacement = 0
+        // Since T > minDuration >= the aMax-only floor here, the
+        // discriminant is guaranteed non-negative and the resulting vPeak
+        // is guaranteed <= vMax (vPeak(T) is monotonically decreasing for
+        // T past the floor, and vPeak(minDuration) == minVPeak <= vMax).
         float T    = targetDuration;
         float disc = T * T - 4.0f * displacement / aMax;
-        if (disc < 0.0f) disc = 0.0f;
+        if (disc < 0.0f) disc = 0.0f;  // precision guard; not expected to trigger
         _vPeak = (aMax / 2.0f) * (T - sqrtf(disc));
         t_a    = _vPeak / aMax;
         float cruise_dist = displacement - (_vPeak * _vPeak / aMax);
@@ -51,7 +87,7 @@ bool TrapezoidalProfile::plan(float q0, float qf, const TrajectoryLimits& limits
     _t2    = t_v;
     _t3    = t_a + t_v;
     _valid = true;
-    return true;
+    return requestSatisfied;
 }
 
 // Evaluates kinematics at time t using the same phased kinematic equations
