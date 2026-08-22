@@ -322,6 +322,9 @@ examples/              # Arduino sketches (see SimpleTrajectoryDemo below).
                        # library.properties makes this a real Arduino
                        # library. Do not rename it.
 docs/                  # educational reference (explainer.html)
+website/               # content pulled by vishwamaggarwal.com at build
+                       # time (article.md, optionally data.md/images/) —
+                       # see the website-content entry below
 library.properties     # Arduino/PlatformIO library metadata
 LICENSE                # MIT
 CMakeLists.txt         # desktop build for tests
@@ -347,3 +350,26 @@ satisfies "Arduino example sketch" in the README roadmap, but **not** the
 "physical validation on one real RC servo joint" goal in Testing goal above
 — that still requires real hardware and Universal-Motor-Interface at the
 Motion Device layer, and hasn't been done.
+
+## Website content moved into a website/ folder (2026-08-22)
+
+`article.md` (already live at
+[vishwamaggarwal.com/articles/universal-trajectory-interface/](https://vishwamaggarwal.com/articles/universal-trajectory-interface/),
+`draft: false`) moved to `website/article.md`, matching a new site-wide
+convention: every project repo the website pulls from keeps everything
+it feeds to the site under one `website/` folder instead of loose at
+repo root (see the website repo's own `CLAUDE.md`, and the
+Servo-Calibrator repo's matching entry from the same session — that
+repo also had a tool landing page and web app to relocate, this one
+doesn't). No `data.md` here yet (never authored), so nothing else to
+move. The website repo's `content.config.ts` was updated to fetch from
+the new path in the same session — **both sides need to land together**:
+until this repo's move is merged, the website's next build looks for
+`website/article.md` here and won't find it (non-fatal — the loader
+just warns and skips, same as a missing token — but the live article
+would silently drop off the site until this merges).
+
+Also added `website/` to both this file's and README's "Repo layout"
+diagrams, which had never listed `article.md` even before this move —
+a pre-existing gap, not something this change introduced, just noticed
+and fixed while touching the same section.
