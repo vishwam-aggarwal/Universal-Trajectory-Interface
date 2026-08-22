@@ -13,6 +13,7 @@ No hardware dependencies. Runs identically on Arduino, Teensy, and Linux x86.
 - **Trapezoidal velocity profile** — classic accel / cruise / decel shape, with automatic triangular fallback for short moves that never reach `vMax`.
 - **Multi-axis synchronization** (`TrajectoryGroup`) — plans up to 6 independent axes so they all arrive at their targets at the same time, regardless of individual distances.
 - **Cartesian path moves** (`CartesianMove`) — drives a tool along a straight line or circular arc in 3D space, with smooth orientation interpolation (SLERP) between start and end orientations.
+- **S-curve (jerk-limited) profile** — *coming soon.* `TrajectoryLimits::jMax` is already reserved for it; see Roadmap below.
 
 ---
 
@@ -193,7 +194,7 @@ library.properties    # Arduino/PlatformIO metadata
 
 ## Roadmap
 
-- [ ] `SCurveProfile` — jerk-limited (S-curve) profile using `jMax`. Will be implemented once `TrapezoidalProfile` has been physically validated on hardware.
+- [ ] `SCurveProfile` — **coming soon.** Jerk-limited (S-curve) profile using `jMax`. Will be implemented once `TrapezoidalProfile` has been physically validated on hardware.
 - [x] Arduino example sketch — `TrapezoidalProfile` driving a simulated motor; compiles on AVR, SAMD, and Teensy. Physical validation against a real RC servo joint (via Universal-Motor-Interface, composed at the Motion Device layer) is still open.
 - [ ] Blend / re-plan — interrupt a move mid-motion and transition smoothly into a new target.
 

@@ -154,6 +154,96 @@ int main() {
         checkNear(pos, 1.5f, TOL, "t=1.5  pos == 1.5 (midpoint)");
     }
 
+    // ------------------------------------------------------------------
+    // 8. Invalid limits (vMax<=0 or aMax<=0) on a nonzero move must not
+    //    divide by zero into an infinite duration -- plan() should fail
+    //    and leave the axis parked at q0.
+    // ------------------------------------------------------------------
+    {
+        printf("\n-- 8. invalid limits (vMax=0 / aMax=0) --\n");
+
+        TrapezoidalProfile p1;
+        TrajectoryLimits limAZero{ 10.0f, 0.0f };
+        check(!p1.plan(0.0f, 10.0f, limAZero, 0.0f), "aMax=0: plan returns false");
+        checkNear(p1.getDuration(), 0.0f, TOL, "aMax=0: duration == 0 (not inf)");
+        evalCheck(p1, 0.5f, 0.0f, 0.0f, 0.0f, false, "aMax=0: parked at q0");
+
+        TrapezoidalProfile p2;
+        TrajectoryLimits limVZero{ 0.0f, 10.0f };
+        check(!p2.plan(0.0f, 10.0f, limVZero, 0.0f), "vMax=0: plan returns false");
+        checkNear(p2.getDuration(), 0.0f, TOL, "vMax=0: duration == 0 (not inf)");
+
+        // Zero-distance moves are exempt -- no kinematics needed, so garbage
+        // limits shouldn't matter.
+        TrapezoidalProfile p3;
+        check(p3.plan(5.0f, 5.0f, limAZero, 0.0f),
+              "zero-distance move tolerates invalid limits");
+    }
+
+    // ------------------------------------------------------------------
+    // 9. targetDuration shorter than the vMax-capped minimum must clamp to
+    //    that minimum (never exceed vMax, never produce a duration longer
+    //    than the true minimum).
+    //    q0=0 qf=20 vMax=5 aMax=10 -> minDuration = 4.5 (trapezoidal,
+    //    aMax-only floor = 2*sqrt(20/10) ≈ 2.83)
+    // ------------------------------------------------------------------
+    {
+        printf("\n-- 9. targetDuration below achievable minimum --\n");
+        TrajectoryLimits lim{ 5.0f, 10.0f };
+        const float minDuration = 4.5f;
+
+        // 9a. Requested duration between the aMax-only floor and the
+        //     vMax-capped minimum -- previously produced vPeak > vMax.
+        {
+            TrapezoidalProfile p;
+            check(!p.plan(0.0f, 20.0f, lim, 3.2f),
+                  "T=3.2 (< min 4.5): plan reports request not satisfied");
+            checkNear(p.getDuration(), minDuration, TOL,
+                      "T=3.2: duration clamped to true minimum (4.5), not 3.2");
+
+            float maxV = 0.0f, pos, vel, accel;
+            for (float t = 0.0f; t <= minDuration; t += 0.01f) {
+                p.evaluate(t, pos, vel, accel);
+                if (vel > maxV) maxV = vel;
+            }
+            check(maxV <= lim.vMax + TOL, "T=3.2: peak velocity never exceeds vMax");
+        }
+
+        // 9b. Requested duration below even the aMax-only floor --
+        //     previously produced a duration far longer than minDuration.
+        {
+            TrapezoidalProfile p;
+            check(!p.plan(0.0f, 20.0f, lim, 0.5f),
+                  "T=0.5 (< floor): plan reports request not satisfied");
+            checkNear(p.getDuration(), minDuration, TOL,
+                      "T=0.5: duration clamped to true minimum (4.5), not 8.25");
+        }
+
+        // 9c. Requesting exactly the achievable minimum is satisfied exactly.
+        {
+            TrapezoidalProfile p;
+            check(p.plan(0.0f, 20.0f, lim, minDuration),
+                  "T==minDuration: plan reports request satisfied");
+            checkNear(p.getDuration(), minDuration, TOL, "T==minDuration: duration matches");
+        }
+
+        // 9d. A duration comfortably longer than the minimum still dilates
+        //     normally (regression against the fix breaking the normal path).
+        {
+            TrapezoidalProfile p;
+            check(p.plan(0.0f, 20.0f, lim, 6.0f),
+                  "T=6.0 (> min): plan reports request satisfied");
+            checkNear(p.getDuration(), 6.0f, TOL, "T=6.0: duration == requested");
+
+            float maxV = 0.0f, pos, vel, accel;
+            for (float t = 0.0f; t <= 6.0f; t += 0.01f) {
+                p.evaluate(t, pos, vel, accel);
+                if (vel > maxV) maxV = vel;
+            }
+            check(maxV <= lim.vMax + TOL, "T=6.0: peak velocity never exceeds vMax");
+        }
+    }
+
     printf("\n%d passed, %d failed\n", s_passed, s_failed);
     return s_failed == 0 ? 0 : 1;
 }
