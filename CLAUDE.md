@@ -1,5 +1,14 @@
 # Universal-Trajectory-Interface
 
+**Before writing or editing anything under `website/`** (`article.md`,
+`data.md` if it ever gets one), read `website/STYLE_GUIDE.md` first — it's
+the canonical visual/content style guide shared across every repo that
+feeds vishwamaggarwal.com (frontmatter schemas, the two intentional layout
+widths, color tokens, chart-SVG conventions, the
+blank-line-inside-raw-HTML gotcha). Canonical copy lives at
+`vishwamaggarwal.com`'s own `STYLE_GUIDE.md`; if this repo's copy is ever
+suspected stale, diff against that one.
+
 ## What this is
 
 A standalone, platform-agnostic C++ library for real-time trajectory (motion
@@ -373,3 +382,11 @@ Also added `website/` to both this file's and README's "Repo layout"
 diagrams, which had never listed `article.md` even before this move —
 a pre-existing gap, not something this change introduced, just noticed
 and fixed while touching the same section.
+
+## website/STYLE_GUIDE.md added (2026-08-22)
+
+Copied from the website repo's canonical `STYLE_GUIDE.md`, same reasoning
+as Servo-Calibrator's matching entry from this session. Audited
+`article.md` against it — already compliant (chart SVGs already used
+`var(--token)` colors and `role="img"`/`aria-label`) — no content changes
+needed, just the new file.
