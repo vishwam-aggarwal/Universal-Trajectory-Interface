@@ -72,7 +72,16 @@ struct TrajectoryLimits {
     float aMax;
     float jMax = 0.0f;   // 0 = unused (trapezoidal); >0 = jerk limit (s-curve)
 };
+```
 
+(The real `src/TrajectoryLimits.h` also adds an explicit 2/3-arg constructor
+alongside `= default`, not shown above -- needed so `TrajectoryLimits{vMax,
+aMax}` brace-init compiles under strict C++11, not just C++14+. A struct
+with a default member initializer like `jMax` above stops being an
+aggregate until C++14, and that gap only surfaced once CI started building
+with a real C++11-strict compiler (gcc on Linux) instead of just MSVC.)
+
+```cpp
 class ITrajectoryProfile {
 public:
     virtual ~ITrajectoryProfile() = default;

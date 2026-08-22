@@ -1,5 +1,8 @@
 # Universal Trajectory Interface
 
+[![build](https://github.com/vishwam-aggarwal/Universal-Trajectory-Interface/actions/workflows/build.yml/badge.svg)](https://github.com/vishwam-aggarwal/Universal-Trajectory-Interface/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A standalone, platform-agnostic C++ library for real-time trajectory (motion profile) generation.
 
 Given a start position, a target position, and kinematic limits (max velocity, max acceleration), it produces smooth, bounded position/velocity/acceleration setpoints on demand — the piece that turns a step change in target into a properly-shaped motion profile.
