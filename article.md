@@ -162,7 +162,7 @@ Not every move is long enough to reach the cruise phase. A short hop only has ro
 
 ## One smooth joint isn't the whole story
 
-Everything above is one motor. A robot arm has several, and each joint's own move is a different distance — a shoulder sweeping 80°, an elbow sweeping 40°, a wrist sweeping 15°. Plan each of those independently for minimum time and they finish at three different moments: the wrist is done in under a third of a second while the shoulder is still only halfway through its swing. Every individual joint traces a perfectly smooth trapezoid — and the arm's tip still doesn't move smoothly through space, because the joints aren't arriving together.
+Everything above is one motor. A robot arm has several, and each joint's own move is a different distance — a shoulder sweeping 80°, an elbow sweeping 40°, a wrist sweeping 15°. Plan each of those independently for minimum time and they finish at three different moments: the wrist is done in under a third of a second while the shoulder has only just crossed a third of its own swing. Every individual joint traces a perfectly smooth trapezoid — and the arm's tip still doesn't move smoothly through space, because the joints aren't arriving together.
 
 <div class="chart-figure">
 <p class="chart-title">Three joints, planned independently vs. synchronized</p>
