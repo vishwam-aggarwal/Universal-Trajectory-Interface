@@ -204,6 +204,25 @@ int main() {
         checkNear(ori.z, S2, TOL, "t=mid  ori.z == sqrt2/2 (90 deg)");
     }
 
+    // ------------------------------------------------------------------
+    // 7. Degenerate ArcPath (startPoint == center -> radius 0) must not
+    //    divide by zero into NaN position/tangent.
+    // ------------------------------------------------------------------
+    {
+        printf("\n-- 7. ArcPath degenerate (radius == 0) --\n");
+        const float PI = 3.14159265f;
+        ArcPath arc({1,2,3}, {1,2,3}, {0,0,1}, PI / 2.0f);
+        checkNear(arc.getLength(), 0.0f, TOL, "length == 0");
+
+        Vec3 pos, tan;
+        arc.evaluate(0.0f, pos, tan);
+        check(!std::isnan(pos.x) && !std::isnan(pos.y) && !std::isnan(pos.z),
+              "s=0  position has no NaN component");
+        check(!std::isnan(tan.x) && !std::isnan(tan.y) && !std::isnan(tan.z),
+              "s=0  tangent has no NaN component");
+        checkVec(pos, 1.0f, 2.0f, 3.0f, TOL, "s=0  position == center");
+    }
+
     printf("\n%d passed, %d failed\n", s_passed, s_failed);
     return s_failed == 0 ? 0 : 1;
 }

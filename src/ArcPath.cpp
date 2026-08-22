@@ -16,6 +16,17 @@ ArcPath::ArcPath(const Vec3& center, const Vec3& startPoint,
 // tangent (unit) = d(position)/ds
 //                = sign * (-sin(theta)*u + cos(theta)*v)
 void ArcPath::evaluate(float s, Vec3& position, Vec3& tangent) const {
+    // Degenerate arc (startPoint == center -> radius 0, getLength() == 0):
+    // theta = s/_radius would be a 0/0 division producing NaN. There's no
+    // meaningful direction of travel on a zero-radius arc, so just report
+    // the single point and the in-plane axis established at construction
+    // time instead of propagating NaN into position/tangent.
+    if (_radius <= 0.0f) {
+        position = _center;
+        tangent  = _v;
+        return;
+    }
+
     float theta = _sign * s / _radius;
     float c = cosf(theta), sn = sinf(theta);
     position = _center + _u * (_radius * c) + _v * (_radius * sn);
