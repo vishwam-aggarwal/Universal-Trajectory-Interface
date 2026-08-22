@@ -16,6 +16,17 @@ public:
     // base-class reference/pointer.
     using ITrajectoryProfile::plan;
 
+    // Returns false (rather than throwing/asserting, per this library's
+    // no-exceptions hot-path constraint) in two cases where the plan is
+    // still left in a usable, safe state:
+    //  - limits.vMax <= 0 or limits.aMax <= 0: the profile is left invalid
+    //    and evaluate() reports the axis parked at q0, never moving.
+    //  - targetDuration > 0 but shorter than this move's own minimum-time
+    //    duration (i.e. a "dilation" request that would actually have to
+    //    speed the move up): the profile falls back to the minimum-time
+    //    plan instead of exceeding vMax or producing a nonsensical
+    //    duration, and getDuration() reports that clamped duration, not
+    //    the one requested.
     bool plan(float q0, float qf, const TrajectoryLimits& limits,
               float targetDuration) override;
 

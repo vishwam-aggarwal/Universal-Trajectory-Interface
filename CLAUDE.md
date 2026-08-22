@@ -143,19 +143,29 @@ Jerk-limited profile using `jMax`. Not needed yet — do not start on this
 until Trapezoidal is ported, tested standalone on desktop, and physically
 validated on one real RC servo joint.
 
-### `TrajectoryGroup` — multi-axis synchronization, later still
+### `TrajectoryGroup` — multi-axis synchronization
+
+**Status: implemented** (`src/TrajectoryGroup.h`/`.cpp`, tested in
+`tests/test_trajectory_group.cpp`) — ahead of the original plan below, which
+called for waiting until `SCurveProfile` also existed. In practice it only
+ever needed `ITrajectoryProfile` (any implementation), so it was built once
+`TrapezoidalProfile` was validated rather than waiting on `SCurveProfile`
+too. Kept below as the authoritative spec for what it does.
 
 Owns up to 6 `ITrajectoryProfile*`. Plans every axis at minimum time, takes
 the max `getDuration()` across axes, then re-plans every axis to that shared
-duration (via `targetDuration`) so all axes arrive together. Not needed
-until both single-axis profile types exist and are validated — do not start
-on this yet.
+duration (via `targetDuration`) so all axes arrive together.
 
-## Architecture note: move types and the Cartesian path extension (future scope)
+## Architecture note: move types and the Cartesian path extension
+
+**Status: implemented** (`src/IPathGeometry.h`, `LinePath.h`/`.cpp`,
+`ArcPath.h`/`.cpp`, `CartesianMove.h`/`.cpp`, `Vec3.h`, `Quatf.h`, tested in
+`tests/test_cartesian.cpp`) — this was originally written as future-scope
+design notes before any of it was built; it's kept below as-is because it's
+still the correct description of the decomposition actually implemented.
 
 This section corrects a subtle scope assumption and documents the right
-decomposition for Cartesian moves, so it isn't re-derived later. It does
-**not** add any work to v1.
+decomposition for Cartesian moves, so it isn't re-derived later.
 
 ### `TrajectoryGroup` is joint-space only
 
@@ -232,7 +242,13 @@ layer:
 Nothing here changes the design of this repo. It is recorded so the split
 is made correctly when the Motion Device layer is built.
 
-## Scope for v1
+## Scope for v1 (historical — superseded, see below)
+
+This was the original v1 scope, written before any code existed. It's kept
+verbatim for history; **the repo has since moved past it** —
+`TrajectoryGroup`, `CartesianMove`, `LinePath`, and `ArcPath` are all
+implemented and tested (see the status notes on their sections above).
+`SCurveProfile` is the one item below still genuinely not started.
 
 - `TrapezoidalProfile` only, single axis. That's the entire deliverable for
   right now — don't build `SCurveProfile` or `TrajectoryGroup` until told to.
@@ -240,6 +256,18 @@ is made correctly when the Motion Device layer is built.
   planned; interrupting/blending into a new target mid-move is an explicit
   v2 concern, not v1.
 - **No torque feedforward**, per the interface above.
+
+### Actual current scope
+
+- `TrapezoidalProfile`, `TrajectoryGroup`, and the Cartesian path classes
+  (`IPathGeometry`, `LinePath`, `ArcPath`, `CartesianMove`) are implemented,
+  desktop-tested, and AVR/SAMD/Teensy compile-verified.
+- `SCurveProfile` is still not started — per the section above, it's gated
+  on `TrapezoidalProfile` being physically validated on real hardware first,
+  which hasn't happened yet (see Testing goal below and the Example sketch
+  section).
+- **No mid-motion re-planning** and **no torque feedforward** are still
+  correct — both remain explicitly out of scope, not just for v1.
 
 ## MATLAB reference
 
@@ -259,15 +287,24 @@ Physical validation on real hardware (one RC servo joint, via
 Universal-Motor-Interface, driven manually) comes only after the desktop
 comparison matches.
 
-## Suggested repo layout
+## Repo layout
 
-Mirror Universal-Motor-Interface's layout where it makes sense:
+Originally written as a suggestion before any code existed; now describes
+what's actually there (see README.md's "Repository layout" section for the
+canonical up-to-date version — keep the two in sync):
 
 ```
 src/                  # the library itself, no build-system assumptions baked in
   ITrajectoryProfile.h
   TrajectoryLimits.h
   TrapezoidalProfile.h / .cpp
+  TrajectoryGroup.h / .cpp
+  IPathGeometry.h
+  LinePath.h / .cpp
+  ArcPath.h / .cpp
+  CartesianMove.h / .cpp
+  Vec3.h
+  Quatf.h
 tests/                # desktop unit tests (plain C++, no hardware)
 examples/              # Arduino sketches (see SimpleTrajectoryDemo below).
                        # Folder must be named exactly "examples" -- this is
@@ -275,15 +312,20 @@ examples/              # Arduino sketches (see SimpleTrajectoryDemo below).
                        # discovery), not a stylistic convention, since
                        # library.properties makes this a real Arduino
                        # library. Do not rename it.
-library.properties     # Arduino/PlatformIO library metadata, once ready
+docs/                  # educational reference (explainer.html)
+library.properties     # Arduino/PlatformIO library metadata
+LICENSE                # MIT
 CMakeLists.txt         # desktop build for tests
 ```
 
-## Immediate task
+## Original bootstrapping task (done)
 
-Implement `ITrajectoryProfile` and `TrapezoidalProfile` exactly to the spec
-above, plus a desktop test scaffold. I'll provide the MATLAB source next —
-ask me where to find it before starting the planning math.
+The original instruction here was: implement `ITrajectoryProfile` and
+`TrapezoidalProfile` to the spec above, plus a desktop test scaffold, porting
+the planning math from the MATLAB reference rather than re-deriving it. That
+happened; `TrapezoidalProfile` is implemented, desktop-tested against the
+MATLAB reference cases, and the repo has since grown well past it (see
+"Actual current scope" above). Left here for history, not as an active task.
 
 ## Example sketch
 
