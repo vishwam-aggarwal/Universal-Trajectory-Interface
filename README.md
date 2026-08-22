@@ -189,6 +189,9 @@ tests/                # desktop unit tests (plain C++, no hardware)
 examples/             # Arduino sketches (no hardware required to compile/run)
   SimpleTrajectoryDemo/
 docs/                 # educational reference (explainer.html)
+website/              # content pulled by vishwamaggarwal.com at build
+                      # time (article.md, optionally data.md/images/) —
+                      # see CLAUDE.md's website-content entry
 CMakeLists.txt
 library.properties    # Arduino/PlatformIO metadata
 ```
