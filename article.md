@@ -3,7 +3,7 @@ title: "Your Motor Doesn't Know How To Get There"
 description: "A target angle is not a motion plan. Why real motors need a shape for the move between two points, not just the destination — and the tiny, portable library that computes it in real time."
 pubDate: 2026-08-22
 tags: ["Robotics", "Embedded", "Motion Control"]
-draft: true
+draft: false
 ---
 
 `servo.write(90)`. One line, and the servo goes to 90°. It works — right up until it doesn't: a wobbly arm that overshoots and settles late, a stepper that skips under load, a gripper that arrives at its target hard enough to rattle the whole frame. The servo isn't broken. Nobody ever told it *how* to get to 90° — only that it should.
