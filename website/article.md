@@ -227,4 +227,18 @@ Matching arrival *time* across joints is what `TrajectoryGroup` does — it's st
 
 None of the math above cares what's on the other end of `evaluate()`'s output. `plan()` and `evaluate()` never touch a clock, allocate memory, or assume a platform — the caller supplies elapsed time, and gets back a position, velocity, and acceleration, deterministically, every time. That's what makes the exact same trapezoid in the charts above run identically on an 8-bit Arduino driving a single RC servo and on a Linux box under a hard-real-time EtherCAT master driving a whole arm — and what makes it possible to validate that shape once, on a desktop build with no hardware attached at all, before it ever touches a motor.
 
+That first pairing isn't hypothetical — it's exactly what runs today inside [Servo Calibrator](/articles/hobby-servo-calibration/): an Arduino Nano builds a real RC servo's calibration table, then plans every point-to-point move against that table with this same `TrapezoidalProfile`, on the same 8-bit chip.
+
 Universal-Trajectory-Interface is one piece of the [Universal Interface Stack](/projects/universal-interface-stack/) — the layer that turns "go to 90°" into a plan for getting there, so the layer below it (the motor driver) only ever has to track a curve, never invent one.
+
+## Get the library
+
+Universal-Trajectory-Interface is free, public, and MIT-licensed:
+[github.com/vishwam-aggarwal/Universal-Trajectory-Interface](https://github.com/vishwam-aggarwal/Universal-Trajectory-Interface).
+It isn't in the Arduino IDE's Library Manager index yet, so add it the
+way you'd add any GitHub-only library — download the repo as a ZIP and
+`Sketch → Include Library → Add .ZIP Library…`, or `git clone` it
+straight into your sketchbook's `libraries/` folder. `src/` has zero
+Arduino-specific code in it, so the same header also builds in a plain
+desktop C++ project, if you want to unit-test a trajectory shape before
+it ever touches a motor.
