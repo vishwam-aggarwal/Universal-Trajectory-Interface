@@ -1,0 +1,3 @@
+[submodule "extern/Universal-Device-Interface"]
+	path = extern/Universal-Device-Interface
+	url = https://github.com/vishwam-aggarwal/Universal-Device-Interface.git

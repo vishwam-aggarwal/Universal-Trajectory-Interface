@@ -141,7 +141,12 @@ Requires C++11 or later. Arduino IDE 1.8+ ships with C++11-capable compilers for
 
 ## Building and testing on desktop (Linux / Windows with MSVC)
 
+The `extern/Universal-Device-Interface` submodule must be present — clone with
+`--recurse-submodules`, or run `git submodule update --init` in an existing
+checkout.
+
 ```bash
+git submodule update --init
 mkdir build && cd build
 cmake ..
 cmake --build .
@@ -203,6 +208,52 @@ library.properties    # Arduino/PlatformIO metadata
 - [ ] `SCurveProfile` — **coming soon.** Jerk-limited (S-curve) profile using `jMax`. Will be implemented once `TrapezoidalProfile` has been physically validated on hardware.
 - [x] Arduino example sketch — `TrapezoidalProfile` driving a simulated motor; compiles on AVR, SAMD, and Teensy. Physical validation against a real RC servo joint (via Universal-Motor-Interface, composed at the Motion Device layer) is still open.
 - [ ] Blend / re-plan — interrupt a move mid-motion and transition smoothly into a new target.
+
+---
+
+## State, status, and errors on the planners
+
+`TrajectoryGroup` and `CartesianMove` derive from
+[`IDevice`](https://github.com/vishwam-aggarwal/Universal-Device-Interface), so
+a failed `plan()` explains itself instead of returning a bare `false`:
+
+```cpp
+IDevice::setGlobalErrorSink(printError);   // once, for the whole stack
+
+TrajectoryGroup group("jointGroup");
+if (!group.plan(profiles, q0, qf, limits, 3)) {
+    // printError already fired with layer="TrajectoryGroup", source="jointGroup"
+    Serial.println(group.getErrorString(group.getError()));
+}
+```
+
+| | Meaning |
+|---|---|
+| `getState()` | `ERRORED` after a failed `plan()`, `IDLE` otherwise. **Never `BUSY`** — these classes are stateless with respect to time (you own `t`; `evaluate()` is `const`), so they cannot honestly know whether a move is in progress. |
+| `getStatus()` | `STATUS_NONE` (no plan loaded) or `STATUS_PLANNED`. |
+| `getError()` | `TrajectoryGroup`: `ERR_INVALID_AXIS_COUNT`, `ERR_NULL_PROFILE`, `ERR_AXIS_PLAN_FAILED`. `CartesianMove`: `ERR_NULL_PATH`, `ERR_NULL_PROFILE`, `ERR_PROFILE_PLAN_FAILED`. |
+| `isOnline()` | Always `true` — pure computation has nothing to be offline from. |
+
+**`ITrajectoryProfile`, `TrapezoidalProfile`, `IPathGeometry`, `LinePath` and
+`ArcPath` are deliberately *not* `IDevice`s.** They're stateless per-axis math
+where `plan()`'s bool already says everything true; only the composing planners
+gained the contract.
+
+`evaluate()` on both planners is unchanged and still non-virtual, so the
+real-time hot path picks up no dynamic dispatch, allocation, or exceptions —
+the only cost is a vtable pointer per planner object.
+
+### Two `plan()` bugs fixed alongside the retrofit
+
+- `TrajectoryGroup::plan()` **ignored every per-axis `plan()` return value**, so
+  it could report success while one axis silently never moved (reachable with a
+  zero or NaN `vMax`/`aMax`, which `TrapezoidalProfile` rejects). Both planning
+  phases are now checked.
+- `CartesianMove::plan()` **dereferenced its `path`/`profile` arguments without
+  a null check**, crashing instead of reporting.
+
+Both now validate before storing anything and leave no plan loaded on failure,
+so `evaluate()` is inert rather than acting on a half-configured planner.
 
 ---
 

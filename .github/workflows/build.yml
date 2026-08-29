@@ -14,7 +14,11 @@ jobs:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      # submodules: extern/Universal-Device-Interface, which TrajectoryGroup
+      # and CartesianMove derive from -- CMake cannot configure without it.
       - uses: actions/checkout@v4
+        with:
+          submodules: true
 
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
