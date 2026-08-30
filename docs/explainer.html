@@ -277,7 +277,7 @@ p->evaluate(0.5, pos, vel, accel); // calls TrapezoidalProfile::evaluate()
 
 // Later you can point at a different implementation with no other code changes:
 // SCurveProfile scurve;
-// p = &scurve;</code></pre>
+// p = &scurve;                    // now jerk-limited, nothing else changes</code></pre>
 
 <p><code>TrajectoryGroup</code> and <code>CartesianMove</code> store <code>ITrajectoryProfile*</code> pointers — they call <code>plan()</code> and <code>evaluate()</code> without knowing or caring whether a trapezoidal or S-curve profile is behind the pointer.</p>
 </section>
@@ -748,7 +748,7 @@ orientation = Quatf::slerp(_q0, _q1, u); // orientation tracks path position</co
 
 <div class="callout key">
   <div class="callout-head">Key Insight — Pluggability</div>
-  <p>Because both <code>IPathGeometry</code> and <code>ITrajectoryProfile</code> are interfaces, you can combine <em>any</em> path with <em>any</em> profile. A future SCurveProfile plugs in with no changes to <code>CartesianMove</code>. A spline path implementation plugs in with no changes to either profile. The pieces are truly independent.</p>
+  <p>Because both <code>IPathGeometry</code> and <code>ITrajectoryProfile</code> are interfaces, you can combine <em>any</em> path with <em>any</em> profile. <code>SCurveProfile</code> plugs in with no changes to <code>CartesianMove</code>. A spline path implementation plugs in with no changes to either profile. The pieces are truly independent.</p>
 </div>
 </section>
 
@@ -798,7 +798,7 @@ for (int i = 0; i < count; ++i) {
   <div style="font-family:monospace; font-size:14px; line-height:2.4; color:#1f2328;">
     <div style="color:#8250df; font-weight:bold; margin-bottom:8px;">ITrajectoryProfile  (interface)</div>
     <div style="padding-left:24px; color:#1f2328;">└── <span style="color:#0969da; font-weight:bold;">TrapezoidalProfile</span>  — phase timing, kinematic equations  <span style="color:#6e7681;">(MATLAB port)</span></div>
-    <div style="padding-left:24px; color:#1f2328;">└── <span style="color:#6e7681;">SCurveProfile</span>  — jerk-limited  <span style="color:#cf222e;">(not yet — needs physical validation + MATLAB)</span></div>
+    <div style="padding-left:24px; color:#1f2328;">└── <span style="color:#0969da; font-weight:bold;">SCurveProfile</span>  — jerk-limited, 7 segments  <span style="color:#6e7681;">(MATLAB port)</span></div>
     <br>
     <div style="color:#8250df; font-weight:bold; margin-bottom:8px;">IPathGeometry  (interface)</div>
     <div style="padding-left:24px;">└── <span style="color:#0969da; font-weight:bold;">LinePath</span>  — straight line, p = p0 + dir×s</div>

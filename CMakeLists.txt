@@ -15,6 +15,7 @@ target_include_directories(device PUBLIC extern/Universal-Device-Interface/src)
 
 add_library(trajectory
     src/TrapezoidalProfile.cpp
+    src/SCurveProfile.cpp
     src/LinePath.cpp
     src/ArcPath.cpp
     src/CartesianMove.cpp
@@ -27,14 +28,17 @@ add_executable(test_trapezoidal      tests/test_trapezoidal.cpp)
 add_executable(test_trajectory_group tests/test_trajectory_group.cpp)
 add_executable(test_cartesian        tests/test_cartesian.cpp)
 add_executable(test_planner_device   tests/test_planner_device.cpp)
+add_executable(test_scurve           tests/test_scurve.cpp)
 
 target_link_libraries(test_trapezoidal      PRIVATE trajectory)
 target_link_libraries(test_trajectory_group PRIVATE trajectory)
 target_link_libraries(test_cartesian        PRIVATE trajectory)
 target_link_libraries(test_planner_device   PRIVATE trajectory)
+target_link_libraries(test_scurve           PRIVATE trajectory)
 
 enable_testing()
 add_test(NAME trapezoidal      COMMAND test_trapezoidal)
 add_test(NAME trajectory_group COMMAND test_trajectory_group)
 add_test(NAME cartesian        COMMAND test_cartesian)
 add_test(NAME planner_device   COMMAND test_planner_device)
+add_test(NAME scurve          COMMAND test_scurve)
