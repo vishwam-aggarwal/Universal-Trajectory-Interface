@@ -178,11 +178,11 @@ See `examples/SimpleTrajectoryDemo` for a minimal, dependency-free sketch: one `
 
 `examples/SCurveTrajectoryDemo` and `examples/JerkPercentTrajectoryDemo` are the same sketch with `SCurveProfile` and `JerkPercentProfile` swapped in. All three run the **same move (0 → 90) with the same nominal limits**, so they can be compared directly:
 
-| sketch | duration | peak accel |
-|---|---|---|
-| `SimpleTrajectoryDemo` | 1.50 s | 180 (steps instantly) |
-| `SCurveTrajectoryDemo` | 1.75 s | 180 (ramps at `jMax`) |
-| `JerkPercentTrajectoryDemo` | 1.50 s | 269 (ramps, but harder) |
+| Sketch | Duration | Peak acceleration | Acceleration shape |
+|---|---|---|---|
+| `SimpleTrajectoryDemo` | 1.50 s | 180 | Steps instantly |
+| `SCurveTrajectoryDemo` | 1.75 s | 180 | Ramps at `jMax` |
+| `JerkPercentTrajectoryDemo` | 1.50 s | 269 | Ramps, but harder |
 
 That contrast is the point: `SCurveProfile` pays for smooth acceleration with time, `JerkPercentProfile` pays for it with acceleration headroom. The latter prints its derived limits at startup so the overshoot above nominal `aMax` is visible.
 
@@ -208,6 +208,11 @@ examples/             # Arduino sketches (no hardware required to compile/run)
   SimpleTrajectoryDemo/
   SCurveTrajectoryDemo/
   JerkPercentTrajectoryDemo/
+  HardwareValidation/   # needs a servo + AS5600 encoder
+tools/                # host-side scripts (Python) for the hardware capture
+  reference_profiles.py
+  capture_validation.py
+  plot_validation.py
 docs/                 # educational reference (explainer.html)
 website/              # content pulled by vishwamaggarwal.com at build
                       # time (article.md, optionally data.md/images/) —
@@ -217,6 +222,26 @@ library.properties    # Arduino/PlatformIO metadata
 ```
 
 ---
+
+## Validating against real hardware
+
+`examples/HardwareValidation` runs the same 90&deg; move under all three
+profiles and streams the commanded *and* measured angle over serial. It needs
+a rig: a hobby servo on pin A3, an AS5600 magnetic encoder on I2C reading the
+servo horn, and a separate 5&nbsp;V supply for the servo (a servo under load
+will brown out a USB-powered board mid-capture).
+
+```
+python tools/capture_validation.py --port COM4 --out run.csv
+python tools/plot_validation.py run.csv
+```
+
+`tools/reference_profiles.py` is a second, independent implementation of all
+three profiles in double-precision Python, transcribed from the same MATLAB
+the C++ was ported from. The plotting script compares the board's actual
+commanded output against it &mdash; so the check is C++-on-target versus the
+reference math, not the board against itself. It then plots measured position,
+tracking error, and the settling tail after each move nominally ends.
 
 ## Roadmap
 

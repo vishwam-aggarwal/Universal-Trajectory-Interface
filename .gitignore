@@ -33,3 +33,7 @@ Resources/
 # Internal Claude Code working notes -- development narrative, not
 # meant for public consumption. Kept locally only, never pushed.
 CLAUDE.md
+
+# Python bytecode from tools/
+__pycache__/
+*.pyc
