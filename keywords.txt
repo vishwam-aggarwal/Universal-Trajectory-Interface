@@ -2,6 +2,7 @@
 # Types (blue)
 ITrajectoryProfile	KEYWORD1
 TrapezoidalProfile	KEYWORD1
+SCurveProfile	KEYWORD1
 TrajectoryLimits	KEYWORD1
 TrajectoryGroup	KEYWORD1
 IPathGeometry	KEYWORD1
