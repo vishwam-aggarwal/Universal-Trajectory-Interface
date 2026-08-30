@@ -17,6 +17,7 @@ No hardware dependencies. Runs identically on Arduino, Teensy, and Linux x86.
 - **Multi-axis synchronization** (`TrajectoryGroup`) — plans up to 6 independent axes so they all arrive at their targets at the same time, regardless of individual distances.
 - **Cartesian path moves** (`CartesianMove`) — drives a tool along a straight line or circular arc in 3D space, with smooth orientation interpolation (SLERP) between start and end orientations.
 - **S-curve (jerk-limited) profile** (`SCurveProfile`) — 7-segment jerk-limited shape driven by `TrajectoryLimits::jMax`, so acceleration ramps instead of stepping. Handles the degenerate cases (too short to reach `vMax`, too short to reach `aMax`, both) internally.
+- **Jerk-percent S-curve** (`JerkPercentProfile`) — the same 7-segment shape, but specified as a *percentage* of the acceleration phase spent ramping, against a **nominal** acceleration limit. Keeps the move's duration exactly equal to the trapezoidal duration, buying smoothness with acceleration headroom instead of time. Note this means peak acceleration **exceeds** the `aMax` you pass in — by 1.49× at 66%, and 2× at 100%.
 
 ---
 
@@ -60,7 +61,7 @@ The one thing this requires from every concrete implementation: declaring your o
 using ITrajectoryProfile::plan;
 ```
 
-`SCurveProfile` carries the same line, and any future `ITrajectoryProfile` implementation needs it too for the 3-arg convenience form to work when called on its own concrete type.
+`SCurveProfile` and `JerkPercentProfile` carry the same line, and any future `ITrajectoryProfile` implementation needs it too for the 3-arg convenience form to work when called on its own concrete type.
 
 ---
 
@@ -175,7 +176,15 @@ Copy the `src/` folder into your project or add this repo as a library. Include 
 
 See `examples/SimpleTrajectoryDemo` for a minimal, dependency-free sketch: one `TrapezoidalProfile` driving a stand-in `SimulatedMotor` (just remembers the commanded position — no real actuator, no external library needed). Compile-verified on Uno, Nano, Mega, Leonardo, Nano 33 IoT (SAMD21), Teensy 4.0, and Teensy 3.2.
 
-`examples/SCurveTrajectoryDemo` is the same sketch with `SCurveProfile` swapped in, so the two can be compared side by side. It also prints the acceleration column, which is where the profiles differ: the trapezoidal one steps accel straight to `aMax`, while this one ramps it at `jMax`. Its limits are chosen so all seven segments are non-degenerate and the phase boundaries land on exact quarter-seconds.
+`examples/SCurveTrajectoryDemo` and `examples/JerkPercentTrajectoryDemo` are the same sketch with `SCurveProfile` and `JerkPercentProfile` swapped in. All three run the **same move (0 → 90) with the same nominal limits**, so they can be compared directly:
+
+| sketch | duration | peak accel |
+|---|---|---|
+| `SimpleTrajectoryDemo` | 1.50 s | 180 (steps instantly) |
+| `SCurveTrajectoryDemo` | 1.75 s | 180 (ramps at `jMax`) |
+| `JerkPercentTrajectoryDemo` | 1.50 s | 269 (ramps, but harder) |
+
+That contrast is the point: `SCurveProfile` pays for smooth acceleration with time, `JerkPercentProfile` pays for it with acceleration headroom. The latter prints its derived limits at startup so the overshoot above nominal `aMax` is visible.
 
 ---
 
@@ -186,6 +195,7 @@ src/                  # library source — no build-system or hardware dependenc
   ITrajectoryProfile.h
   TrapezoidalProfile.h / .cpp
   SCurveProfile.h / .cpp
+  JerkPercentProfile.h / .cpp
   TrajectoryGroup.h / .cpp
   IPathGeometry.h
   LinePath.h / .cpp
@@ -197,6 +207,7 @@ tests/                # desktop unit tests (plain C++, no hardware)
 examples/             # Arduino sketches (no hardware required to compile/run)
   SimpleTrajectoryDemo/
   SCurveTrajectoryDemo/
+  JerkPercentTrajectoryDemo/
 docs/                 # educational reference (explainer.html)
 website/              # content pulled by vishwamaggarwal.com at build
                       # time (article.md, optionally data.md/images/) —
@@ -211,6 +222,7 @@ library.properties    # Arduino/PlatformIO metadata
 
 - [x] `SCurveProfile` — jerk-limited (S-curve) profile using `jMax`, ported from the same MATLAB reference as `TrapezoidalProfile` and desktop-tested against it (354 checks). Not yet validated on physical hardware.
 - [x] Arduino example sketch — `TrapezoidalProfile` driving a simulated motor; compiles on AVR, SAMD, and Teensy. Physical validation against a real RC servo joint (via Universal-Motor-Interface, composed at the Motion Device layer) is still open.
+- [x] `JerkPercentProfile` — jerk specified as a percentage of the acceleration phase against a nominal `aMax`, preserving trapezoidal duration. Ported from the MATLAB reference and desktop-tested against it (283 checks). Not yet validated on physical hardware.
 - [ ] Blend / re-plan — interrupt a move mid-motion and transition smoothly into a new target.
 
 ---

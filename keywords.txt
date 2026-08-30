@@ -3,6 +3,7 @@
 ITrajectoryProfile	KEYWORD1
 TrapezoidalProfile	KEYWORD1
 SCurveProfile	KEYWORD1
+JerkPercentProfile	KEYWORD1
 TrajectoryLimits	KEYWORD1
 TrajectoryGroup	KEYWORD1
 IPathGeometry	KEYWORD1
@@ -16,6 +17,10 @@ Quatf	KEYWORD1
 plan	KEYWORD2
 evaluate	KEYWORD2
 getDuration	KEYWORD2
+deriveLimits	KEYWORD2
+getDerivedLimits	KEYWORD2
+setJerkPercent	KEYWORD2
+getJerkPercent	KEYWORD2
 getLength	KEYWORD2
 getCount	KEYWORD2
 dot	KEYWORD2
