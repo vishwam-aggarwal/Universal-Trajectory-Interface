@@ -327,6 +327,16 @@ stage it.
 Every number above is reproducible: `examples/HardwareValidation` and the two
 scripts in `tools/` are what produced them.
 
+## Try both of them yourself
+
+The choice in the last two sections is a trade, and trades are easier to judge with your hands on the sliders. [**Trajectory Lab**](/tools/trajectory-lab/) runs this library in a browser tab, with all three profiles on one set of axes for the same move.
+
+Drop `jMax` and watch the S-curve's acceleration corners round off while its duration grows. Push `jerkPercent` from 10% toward 100% and watch the jerk-percent profile keep the trapezoid's duration exactly while its acceleration plateau climbs past the `aMax` you asked for &mdash; the page reports the derived figure and the 2/(2&minus;p) multiplier next to the chart, so the headroom you're spending is on screen rather than implied.
+
+The curves are not a re-derivation. `SCurveProfile.cpp` and `JerkPercentProfile.cpp` are compiled to WebAssembly and called in `float`, the same arithmetic the Nano above was running, and every build is checked sample-by-sample against the same double-precision transcription of the MATLAB that produced the reference traces in this article.
+
+A second tab flashes a demo sketch onto your own Arduino over USB and plots what the board reports against the browser's own computation of the same move &mdash; the same comparison as the hardware section above, on your servo instead of mine. It wants Chrome or Edge on desktop, an ATmega328P board, and a servo; there's no encoder in that setup, so it plots pulse width rather than degrees, for the reason the calibration story above makes obvious.
+
 ## Get the library
 
 Universal-Trajectory-Interface is free, public, and MIT-licensed:

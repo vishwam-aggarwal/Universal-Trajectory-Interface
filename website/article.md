@@ -231,6 +231,14 @@ That first pairing isn't hypothetical — it's exactly what runs today inside [S
 
 Universal-Trajectory-Interface is one piece of the [Universal Interface Stack](/projects/universal-interface-stack/) — the layer that turns "go to 90°" into a plan for getting there, so the layer below it (the motor driver) only ever has to track a curve, never invent one.
 
+## Run it in your browser
+
+Everything above is a claim about a shape, and shapes are easier to believe when you can push them around yourself. [**Trajectory Lab**](/tools/trajectory-lab/) is this library running in a browser tab: pick a profile, drag `vMax` and `aMax`, and watch the three panels redraw. Shorten the move until the trapezoid collapses into the triangle from the section above, and watch the cruise phase disappear.
+
+It isn't a JavaScript imitation of the maths. The same `TrapezoidalProfile.cpp` compiled for the Arduino is compiled again to WebAssembly and called in single-precision `float`, so the curve on the page is the arithmetic the microcontroller executes, rounding included &mdash; which is really just the portability argument from the previous section taken one target further. Every build is diffed against an independent transcription of the original MATLAB reference before it ships.
+
+There's a second tab that flashes a demo sketch onto your own Arduino over USB &mdash; no toolchain, no IDE, no library installs &mdash; then commands moves and draws what the board reports against the same profile computed in the browser. That needs Chrome or Edge on desktop, an ATmega328P board, and a servo.
+
 ## Get the library
 
 Universal-Trajectory-Interface is free, public, and MIT-licensed:
