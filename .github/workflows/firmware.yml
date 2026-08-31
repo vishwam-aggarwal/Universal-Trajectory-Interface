@@ -1,0 +1,100 @@
+name: firmware
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  # Compiles every example sketch, and produces the .hex that the
+  # Trajectory Lab web app flashes over Web Serial.
+  #
+  # Until now the arduino-cli verification for this library was done by
+  # hand. It matters more here than it used to: website/app/*.hex is a
+  # committed artifact that gets flashed onto other people's hardware, so
+  # "it compiled on my machine" is not a good enough standard for it.
+  compile:
+    runs-on: ubuntu-latest
+    steps:
+      # WebServoDemo includes only the three standalone profiles, but the
+      # Arduino build compiles every .cpp in src/, and TrajectoryGroup.cpp
+      # and CartesianMove.cpp need IDevice.h from the submodule.
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: Install cores and libraries
+        run: |
+          arduino-cli core update-index
+          arduino-cli core install arduino:avr
+          arduino-cli core install arduino:renesas_uno
+          # Servo ships with the Arduino IDE but not with a bare core
+          # install, so WebServoDemo and HardwareValidation need it added
+          # explicitly here. It is the only external library either one
+          # wants -- HardwareValidation talks to its AS5600 through raw
+          # Wire calls rather than a driver library.
+          arduino-cli lib install Servo
+
+      # This library and the Universal-Device-Interface submodule both have
+      # to be on the library path. Staged as a sibling tree rather than
+      # installed, so the checkout is what gets compiled.
+      - name: Stage libraries
+        run: |
+          mkdir -p "$HOME/libs"
+          ln -s "$GITHUB_WORKSPACE" "$HOME/libs/Universal-Trajectory-Interface"
+          ln -s "$GITHUB_WORKSPACE/extern/Universal-Device-Interface" \
+                "$HOME/libs/Universal-Device-Interface"
+
+      - name: Compile every example
+        run: |
+          set -e
+          for sketch in examples/*/; do
+            name="$(basename "$sketch")"
+            for fqbn in arduino:avr:uno arduino:avr:mega arduino:renesas_uno:unor4wifi; do
+              echo "::group::$name on $fqbn"
+              arduino-cli compile --warnings all --fqbn "$fqbn" \
+                --libraries "$HOME/libs" "$sketch"
+              echo "::endgroup::"
+            done
+          done
+
+      # The app offers Uno / Nano(new) / Nano(old) but ships ONE image,
+      # because all three are an ATmega328P at 16 MHz and only the
+      # bootloader differs -- which is an uploader setting, not something
+      # compiled in. That claim is load-bearing for the web app, so it is
+      # asserted here rather than assumed.
+      - name: One image serves Uno and Nano
+        run: |
+          arduino-cli compile --fqbn arduino:avr:uno \
+            --libraries "$HOME/libs" --output-dir /tmp/uno examples/WebServoDemo
+          arduino-cli compile --fqbn arduino:avr:nano:cpu=atmega328 \
+            --libraries "$HOME/libs" --output-dir /tmp/nano examples/WebServoDemo
+          if cmp -s /tmp/uno/WebServoDemo.ino.hex /tmp/nano/WebServoDemo.ino.hex; then
+            echo "Uno and Nano hex are byte-identical, as the app assumes."
+          else
+            echo "::error::Uno and Nano hex differ -- the web app ships one image for both."
+            exit 1
+          fi
+
+      - name: Compare against the committed image
+        # Informational: avr-gcc output moves between toolchain versions, so
+        # a diff is not by itself a defect. It is the signal to rebuild and
+        # recommit when the sketch has changed.
+        run: |
+          if cmp -s /tmp/uno/WebServoDemo.ino.hex website/app/webservodemo-atmega328p.hex; then
+            echo "Committed image matches this build."
+          else
+            echo "::notice::website/app/webservodemo-atmega328p.hex differs from this build -- download the firmware-hex artifact and recommit if the sketch changed."
+            echo "committed: $(wc -c < website/app/webservodemo-atmega328p.hex) bytes"
+            echo "built:     $(wc -c < /tmp/uno/WebServoDemo.ino.hex) bytes"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: firmware-hex
+          path: /tmp/uno/WebServoDemo.ino.hex
+          if-no-files-found: error

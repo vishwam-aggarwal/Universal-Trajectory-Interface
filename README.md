@@ -208,18 +208,62 @@ examples/             # Arduino sketches (no hardware required to compile/run)
   SimpleTrajectoryDemo/
   SCurveTrajectoryDemo/
   JerkPercentTrajectoryDemo/
+  WebServoDemo/         # needs a servo; flashed by the web app over USB
   HardwareValidation/   # needs a servo + AS5600 encoder
 tools/                # host-side scripts (Python) for the hardware capture
   reference_profiles.py
   capture_validation.py
   plot_validation.py
+wasm/                 # WebAssembly build of the three scalar profiles,
+                      # for the Trajectory Lab web app — see wasm/README.md
+  uti_wasm.cpp        #   flat extern "C" shim
+  build.sh
+  gen_reference.py    #   expected values, from tools/reference_profiles.py
+  verify_parity.mjs   #   compares the built bundle against them
 docs/                 # educational reference (explainer.html)
 website/              # content pulled by vishwamaggarwal.com at build
-                      # time (article.md, optionally data.md/images/) —
+                      # time (article.md, tool.md, app.html, app/) —
                       # see CLAUDE.md's website-content entry
+  app.html            #   the Trajectory Lab app itself
+  app/                #   generated + vendored assets (see app/VENDOR.md)
+    uti.js            #     the compiled WASM bundle
+    avrbro.umd.js     #     STK500v1 over Web Serial, for flashing
+    webservodemo-*.hex#     precompiled WebServoDemo firmware
 CMakeLists.txt
 library.properties    # Arduino/PlatformIO metadata
 ```
+
+---
+
+## Try it in the browser
+
+[**Trajectory Lab**](https://vishwamaggarwal.com/tools/trajectory-lab/) is an
+interactive version of this library: pick a profile, drag the limits, and watch
+position, velocity and acceleration update — or overlay all three profiles on
+the same move to compare what each one costs.
+
+It is not a JavaScript re-implementation. `TrapezoidalProfile.cpp`,
+`SCurveProfile.cpp` and `JerkPercentProfile.cpp` are compiled to WebAssembly
+and called in `float`, so the curves it draws are the same arithmetic an
+ATmega328P executes. Every build is checked sample-by-sample against
+`tools/reference_profiles.py` — the same independent transcription of the
+MATLAB reference used to validate the library on real hardware.
+
+It also flashes `examples/WebServoDemo` onto an ATmega328P board straight
+from the page over Web Serial &mdash; no toolchain, no IDE &mdash; and then
+commands moves on it, drawing the board's streamed trace against the same
+profile computed in the browser. Chrome, Edge or Opera on desktop; a hobby
+servo on pin A3 with its own supply.
+
+Those charts are in **microseconds of pulse width, not degrees**, on
+purpose: with no encoder there is no way to know what a pulse width does to
+a given servo, and "1000&ndash;2000&nbsp;&micro;s is 180&deg;" is a
+convention rather than a specification &mdash; the servo on this library's
+bench rig does 0.0888&nbsp;&deg;/&micro;s, so that range spans 89.7&deg;.
+
+See [`wasm/README.md`](wasm/README.md) to build the bundle yourself, and
+[`website/app/VENDOR.md`](website/app/VENDOR.md) for what is generated
+versus vendored.
 
 ---
 
