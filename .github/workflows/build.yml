@@ -5,6 +5,7 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  workflow_dispatch:
 
 jobs:
   desktop:
@@ -28,3 +29,76 @@ jobs:
 
       - name: Test
         run: ctest --test-dir build -C Release --output-on-failure
+
+  # Builds the browser bundle the Trajectory Lab web app runs on, and holds
+  # it to the same reference math the hardware rig was held to.
+  #
+  # website/app/uti.js is a committed generated artifact, so this job checks
+  # two separate things:
+  #   1. the committed bundle -- the one the website actually serves --
+  #      still agrees with tools/reference_profiles.py, and
+  #   2. a bundle freshly built from current src/ does too.
+  # Both passing is also what catches a stale commit: if src/ changed
+  # behaviour and uti.js was not rebuilt, the two disagree with the
+  # reference in different places.
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      # No submodule needed here: the three scalar profiles this bundle
+      # compiles include only <math.h>. IDevice.h is pulled in by
+      # TrajectoryGroup.h and CartesianMove.h alone, and neither is part of
+      # the WASM build.
+      - uses: actions/checkout@v4
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          # Pinned rather than "latest" so a toolchain bump is a deliberate
+          # commit, not a silent change to a shipped artifact.
+          version: 3.1.64
+          actions-cache-folder: emsdk-cache
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Built to a scratch path so the committed bundle stays intact for the
+      # comparison below.
+      - name: Build from source
+        run: bash wasm/build.sh build-wasm/uti.js
+
+      - name: Verify the freshly built bundle
+        run: node wasm/verify_parity.mjs build-wasm/uti.js
+
+      - name: Verify the committed bundle
+        # Skipped rather than failed when absent, so the very first run --
+        # which is what produces the artifact to commit -- can succeed.
+        run: |
+          if [ -f website/app/uti.js ]; then
+            node wasm/verify_parity.mjs website/app/uti.js
+          else
+            echo "::notice::website/app/uti.js is not committed yet -- " \
+                 "download the uti-wasm-bundle artifact from this run and commit it."
+          fi
+
+      - name: Report drift against the committed bundle
+        # Informational only. emcc output is not guaranteed byte-reproducible
+        # across environments, so a byte diff is not evidence of a problem --
+        # the two parity runs above are what actually gate correctness.
+        run: |
+          if [ ! -f website/app/uti.js ]; then
+            echo "no committed bundle to compare against"
+          elif cmp -s build-wasm/uti.js website/app/uti.js; then
+            echo "Rebuilt bundle is byte-identical to the committed one."
+          else
+            echo "::notice::Rebuilt bundle differs byte-wise from the committed one."
+            echo "committed: $(wc -c < website/app/uti.js) bytes"
+            echo "rebuilt:   $(wc -c < build-wasm/uti.js) bytes"
+          fi
+
+      # So the bundle can be downloaded and committed from a machine that
+      # cannot run emsdk locally.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uti-wasm-bundle
+          path: build-wasm/uti.js
+          if-no-files-found: error

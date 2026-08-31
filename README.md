@@ -213,13 +213,39 @@ tools/                # host-side scripts (Python) for the hardware capture
   reference_profiles.py
   capture_validation.py
   plot_validation.py
+wasm/                 # WebAssembly build of the three scalar profiles,
+                      # for the Trajectory Lab web app — see wasm/README.md
+  uti_wasm.cpp        #   flat extern "C" shim
+  build.sh
+  gen_reference.py    #   expected values, from tools/reference_profiles.py
+  verify_parity.mjs   #   compares the built bundle against them
 docs/                 # educational reference (explainer.html)
 website/              # content pulled by vishwamaggarwal.com at build
-                      # time (article.md, optionally data.md/images/) —
+                      # time (article.md, tool.md, app.html, app/) —
                       # see CLAUDE.md's website-content entry
+  app.html            #   the Trajectory Lab app itself
+  app/uti.js          #   generated: the compiled WASM bundle (committed)
 CMakeLists.txt
 library.properties    # Arduino/PlatformIO metadata
 ```
+
+---
+
+## Try it in the browser
+
+[**Trajectory Lab**](https://vishwamaggarwal.com/tools/trajectory-lab/) is an
+interactive version of this library: pick a profile, drag the limits, and watch
+position, velocity and acceleration update — or overlay all three profiles on
+the same move to compare what each one costs.
+
+It is not a JavaScript re-implementation. `TrapezoidalProfile.cpp`,
+`SCurveProfile.cpp` and `JerkPercentProfile.cpp` are compiled to WebAssembly
+and called in `float`, so the curves it draws are the same arithmetic an
+ATmega328P executes. Every build is checked sample-by-sample against
+`tools/reference_profiles.py` — the same independent transcription of the
+MATLAB reference used to validate the library on real hardware.
+
+See [`wasm/README.md`](wasm/README.md) to build the bundle yourself.
 
 ---
 

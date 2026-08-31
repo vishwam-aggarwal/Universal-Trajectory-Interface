@@ -1,6 +1,12 @@
 # Build output
 build/
+build_vs/
 cmake-build-*/
+
+# Scratch output dir for wasm/build.sh. The bundle it produces is
+# committed at website/app/uti.js; this is only where CI builds a second
+# copy to compare against, and where a local rebuild can be staged.
+build-wasm/
 
 # IDE / tool local state
 .vscode/

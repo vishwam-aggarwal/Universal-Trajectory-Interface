@@ -32,12 +32,20 @@ add_executable(test_planner_device   tests/test_planner_device.cpp)
 add_executable(test_scurve           tests/test_scurve.cpp)
 add_executable(test_jerk_percent     tests/test_jerk_percent.cpp)
 
+# The WASM shim compiles with a host compiler too (its EMSCRIPTEN_KEEPALIVE
+# macro stubs itself out when __EMSCRIPTEN__ is undefined), so the
+# marshalling layer the web app calls into is covered by the same desktop CI
+# as everything else. An emsdk toolchain is then only needed to package
+# already-tested code -- see wasm/README.md.
+add_executable(test_wasm_shim        tests/test_wasm_shim.cpp wasm/uti_wasm.cpp)
+
 target_link_libraries(test_trapezoidal      PRIVATE trajectory)
 target_link_libraries(test_trajectory_group PRIVATE trajectory)
 target_link_libraries(test_cartesian        PRIVATE trajectory)
 target_link_libraries(test_planner_device   PRIVATE trajectory)
 target_link_libraries(test_scurve           PRIVATE trajectory)
 target_link_libraries(test_jerk_percent     PRIVATE trajectory)
+target_link_libraries(test_wasm_shim        PRIVATE trajectory)
 
 enable_testing()
 add_test(NAME trapezoidal      COMMAND test_trapezoidal)
@@ -46,3 +54,4 @@ add_test(NAME cartesian        COMMAND test_cartesian)
 add_test(NAME planner_device   COMMAND test_planner_device)
 add_test(NAME scurve          COMMAND test_scurve)
 add_test(NAME jerk_percent    COMMAND test_jerk_percent)
+add_test(NAME wasm_shim       COMMAND test_wasm_shim)

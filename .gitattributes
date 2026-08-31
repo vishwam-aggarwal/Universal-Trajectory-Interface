@@ -1,0 +1,13 @@
+# Shell scripts must keep LF endings even when checked out on Windows.
+# wasm/build.sh runs on ubuntu-latest in CI, and bash fails on a CRLF
+# script with an opaque "$'\r': command not found".
+*.sh text eol=lf
+
+# Same reasoning for the CI workflows themselves and for the Node script
+# CI invokes.
+*.yml text eol=lf
+*.mjs text eol=lf
+
+# The generated WebAssembly bundle is machine-written; never let it be
+# line-ending-normalised, or a rebuild diffs against a mangled copy.
+website/app/uti.js -text
