@@ -37,21 +37,28 @@ mkdir -p "$(dirname "${OUT}")"
 # Emscripten wants the leading underscore on each.
 EXPORTS="_uti_plan,_uti_planned,_uti_duration,_uti_derived_aMax,_uti_derived_jMax,_uti_max_samples,_uti_sample"
 
-# On Windows the emsdk ships emcc as an extensionless Python script with no
-# exec bit, alongside a real emcc.exe launcher. A POSIX shell picks the
-# former first and dies with "Permission denied", so prefer the .exe when
-# one exists. Override with EMCC=... if your install differs.
+# The emsdk ships emcc, emcc.bat and (on Windows) emcc.exe side by side in
+# one directory, all of them on PATH once emsdk_env is sourced -- but which
+# are actually runnable depends on the platform. On Linux only the
+# extensionless script is executable; from a POSIX shell on Windows that
+# same script has no exec bit and it is emcc.exe that works.
+#
+# So mere existence is not a good enough test: picking emcc.bat on Linux
+# fails with "Permission denied" and exit 126. Probe each candidate by
+# actually running it. Override with EMCC=... if your install differs.
 EMCC="${EMCC:-}"
 if [ -z "${EMCC}" ]; then
-  for candidate in emcc.exe emcc.bat emcc; do
-    if command -v "${candidate}" >/dev/null 2>&1; then
+  for candidate in emcc emcc.exe emcc.bat; do
+    if command -v "${candidate}" >/dev/null 2>&1 &&
+       "${candidate}" --version >/dev/null 2>&1; then
       EMCC="${candidate}"
       break
     fi
   done
 fi
 if [ -z "${EMCC}" ]; then
-  echo "error: emcc not found on PATH -- source your emsdk_env script first." >&2
+  echo "error: no runnable emcc on PATH -- source your emsdk_env script first." >&2
+  echo "       (if emcc is present but refuses to run, see wasm/README.md)" >&2
   exit 1
 fi
 
