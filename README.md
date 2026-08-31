@@ -289,10 +289,13 @@ tracking error, and the settling tail after each move nominally ends.
 
 ## Roadmap
 
-- [x] `SCurveProfile` — jerk-limited (S-curve) profile using `jMax`, ported from the same MATLAB reference as `TrapezoidalProfile` and desktop-tested against it (354 checks). Not yet validated on physical hardware.
-- [x] Arduino example sketch — `TrapezoidalProfile` driving a simulated motor; compiles on AVR, SAMD, and Teensy. Physical validation against a real RC servo joint (via Universal-Motor-Interface, composed at the Motion Device layer) is still open.
-- [x] `JerkPercentProfile` — jerk specified as a percentage of the acceleration phase against a nominal `aMax`, preserving trapezoidal duration. Ported from the MATLAB reference and desktop-tested against it (283 checks). Not yet validated on physical hardware.
+- [x] `SCurveProfile` — jerk-limited (S-curve) profile using `jMax`, ported from the same MATLAB reference as `TrapezoidalProfile` and desktop-tested against it (354 checks).
+- [x] `JerkPercentProfile` — jerk specified as a percentage of the acceleration phase against a nominal `aMax`, preserving trapezoidal duration. Ported from the MATLAB reference and desktop-tested against it (283 checks).
+- [x] Arduino example sketches — five, four of which need no hardware at all; they compile on AVR, SAMD, Renesas, and Teensy.
+- [x] Validated on physical hardware — all three profiles run on an ATmega328P against an AS5600 magnetic encoder as ground truth. On-device output matches the reference maths to within float32 rounding, and the servo tracks every profile monotonically, with lag proportional to commanded velocity and no overshoot beyond its own deadband. `examples/HardwareValidation` plus the scripts in `tools/` reproduce it.
+- [x] [Trajectory Lab](https://vishwamaggarwal.com/tools/trajectory-lab/) — the library compiled to WebAssembly and driven from a browser, which can also flash `examples/WebServoDemo` onto a board over Web Serial.
 - [ ] Blend / re-plan — interrupt a move mid-motion and transition smoothly into a new target.
+- [ ] Composition at the Motion Device layer — pairing a profile with a real driver through Universal-Motor-Interface, rather than each example driving a servo directly.
 
 ---
 
