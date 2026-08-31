@@ -8,6 +8,14 @@
 *.yml text eol=lf
 *.mjs text eol=lf
 
-# The generated WebAssembly bundle is machine-written; never let it be
-# line-ending-normalised, or a rebuild diffs against a mangled copy.
+# Generated artifacts are machine-written; never let them be
+# line-ending-normalised, or a rebuild diffs against a mangled copy and
+# CI reports drift that isn't there.
+#
+# Intel HEX in particular: avr-objcopy emits CRLF by convention on every
+# platform, so normalising to LF on commit made the committed image
+# differ from every fresh build. (avrbro's parser copes with either, so
+# this was a false alarm rather than a broken upload -- but a check that
+# always fires is a check nobody reads.)
 website/app/uti.js -text
+*.hex -text
