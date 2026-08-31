@@ -68,15 +68,41 @@ it.
 
 ## Driving a real servo
 
-A second tab will let you flash a small demo sketch onto an Arduino over USB
-— no toolchain, no library installs — and then command moves and watch your
-own servo run them, with the board's streamed trace drawn against the
-simulated one. That part is still being built; the simulator above works
-today and needs no hardware at all.
+The second tab flashes a small demo sketch onto your own Arduino straight
+from the page — no toolchain, no IDE, no library installs — then lets you
+command moves and watch the servo run them. The board plans and executes
+each move itself and streams back what it commanded; the page draws that on
+top of the same profile computed in the browser, so you can see an 8-bit
+microcontroller and a WebAssembly build agreeing on the same curve.
 
-When it lands it will want Chrome or Edge on desktop (Web Serial is not
-available in Firefox or Safari), an ATmega328P board — an Uno, or a Nano of
-either bootloader vintage — and a hobby servo on its own 5 V supply.
+You'll need:
 
-If you want to run the library on hardware right now, the repo ships four
-example sketches, three of which need nothing but a board.
+- **Chrome, Edge or Opera on desktop.** Flashing and serial both go through
+  the Web Serial API, which Firefox ships only in Nightly behind a flag and
+  Safari doesn't implement at all.
+- **An ATmega328P board** — an Uno, or a Nano of either bootloader vintage.
+  All three take the same image; only the upload settings differ. Nano
+  clones are split between two bootloaders and nothing on the port says
+  which, so if flashing won't sync, pick the other Nano option.
+- **A hobby servo**, signal on pin **A3**, powered from its own 4.8–6 V
+  supply with a common ground. A servo's stall current will brown out a
+  USB-powered board mid-move, which looks like the profile glitching.
+
+### Why it's in microseconds
+
+The charts on that tab are labelled in microseconds of pulse width, not
+degrees, and that's deliberate. Without an encoder there's no way to know
+what a pulse width does to *your* servo, and the usual assumption is wrong:
+"1000–2000 µs is 180°" is a convention, not a specification. The servo on
+this library's bench rig moves 0.0888 °/µs — that range spans 89.7°, about
+half what everyone assumes.
+
+That matters more than it sounds. Commanding as though the range were 180°
+produces a curve with the right shape at the wrong amplitude, which reads
+like the servo failing to track rather than like a calibration error. It
+cost real time to diagnose once already, so this demo doesn't repeat it.
+There's a field for your own measured °/µs if you have it, and the page
+labels the result as your figure rather than as a measurement.
+
+If you'd rather not use the browser at all, the repo ships five example
+sketches — four of them need nothing but a board.

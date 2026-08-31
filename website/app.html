@@ -64,6 +64,12 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute is only `display: none` in the UA stylesheet, so
+   any author rule that sets display beats it -- and several elements here
+   that get toggled with .hidden also carry .main-grid (display: grid).
+   Without this the browser-support gate shows both panels at once. */
+[hidden] { display: none !important; }
+
 html, body { margin: 0; padding: 0; }
 
 body {
@@ -438,6 +444,82 @@ table.samples td:first-child, table.samples th:first-child { text-align: left; }
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+/* ---------- hardware tab ---------- */
+
+/* Progressive unlock: you cannot command a board you have not connected.
+   Dimmed rather than hidden so the whole sequence is visible up front. */
+.card.locked { opacity: 0.45; pointer-events: none; }
+
+select.picker {
+  width: 100%;
+  background: var(--surface-alt);
+  border: 1.5px solid var(--line);
+  border-radius: 2px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+select.picker:focus { outline: none; border-color: var(--accent); }
+
+.pill {
+  display: inline-block;
+  border: 1.5px solid var(--line-strong);
+  border-radius: 2px;
+  padding: 0.15rem 0.45rem;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+}
+.pill.good { border-color: var(--accent); color: var(--accent); }
+.pill.bad  { border-color: var(--crit);   color: var(--crit); }
+
+.progress {
+  height: 6px;
+  background: var(--surface-alt);
+  border: 1.5px solid var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0.5rem 0;
+}
+.progress > span {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.15s linear;
+}
+
+.log-box {
+  background: var(--deep);
+  border: 1.5px solid var(--line);
+  border-radius: 2px;
+  padding: 0.5rem 0.6rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  color: var(--ink-dim);
+  white-space: pre-wrap;
+  word-break: break-word;
+  height: 200px;
+  overflow-y: auto;
+}
+.log-box .err { color: var(--crit); }
+.log-box .tx  { color: var(--accent); }
+
+.btn.danger {
+  background: var(--crit);
+  border-color: var(--crit);
+  color: #2A0B0B;
+  font-weight: 600;
+}
+.btn.danger:hover { color: #2A0B0B; filter: brightness(1.08); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn:disabled:hover { border-color: var(--line-strong); color: var(--ink); }
 </style>
 </head>
 <body>
@@ -581,30 +663,168 @@ table.samples td:first-child, table.samples th:first-child { text-align: left; }
 
 <!-- ============================ HARDWARE ============================ -->
 <div id="pane-hw" role="tabpanel" aria-labelledby="tab-hw" hidden>
-  <div class="main-grid" style="grid-template-columns:1fr;max-width:56rem">
+
+  <!-- Shown instead of everything else when the browser has no Web Serial.
+       The sibling Servo Calibrator app has no such check and throws a raw
+       TypeError into a log box on Firefox; not repeating that here. -->
+  <div id="hw-unsupported" class="main-grid" style="grid-template-columns:1fr;max-width:52rem" hidden>
     <div class="placeholder">
-      <h3>Not built yet</h3>
+      <h3>This browser can&rsquo;t talk to a serial port</h3>
+      <p id="hw-unsupported-why"></p>
       <p>
-        This tab will let you flash a small demo sketch onto an Arduino over
-        USB &mdash; no toolchain, no library installs &mdash; then command moves
-        and watch your own servo run them, with the board&rsquo;s streamed trace
-        drawn against the simulated one.
+        Flashing and driving a board need the
+        <a href="https://developer.mozilla.org/en-US/docs/Web/API/Web_Serial_API"
+           target="_blank" rel="noopener noreferrer">Web Serial API</a>, which
+        today means <strong>Chrome, Edge or Opera on desktop</strong>. Firefox
+        has it only in Nightly behind a flag; Safari doesn&rsquo;t implement it.
       </p>
-      <p>It is being built in a second pass. What it will need from you:</p>
-      <ul>
-        <li>Chrome or Edge on desktop (Web Serial is not available in Firefox or Safari).</li>
-        <li>An ATmega328P board &mdash; an Uno, or a Nano of either bootloader vintage.</li>
-        <li>A hobby servo on its own 5&nbsp;V supply, signal on pin A3.</li>
-      </ul>
       <p style="margin-bottom:0">
-        In the meantime the <strong>Simulate</strong> tab runs the same compiled
-        library the board will, so the curves there are already the real thing.
+        The <strong>Simulate</strong> tab works everywhere and needs no hardware.
       </p>
+    </div>
+  </div>
+
+  <div id="hw-main" class="main-grid">
+    <div>
+      <section class="card" id="card-flash">
+        <h2>1 &middot; Flash the board</h2>
+        <p class="hint">
+          Puts <code>examples/WebServoDemo</code> on your Arduino. No toolchain,
+          no library installs &mdash; it is already compiled.
+        </p>
+
+        <label class="visually-hidden" for="hw-board">Board</label>
+        <select class="picker" id="hw-board">
+          <option value="nano-new" selected>Nano &mdash; new bootloader (115200)</option>
+          <option value="nano-old">Nano &mdash; old bootloader (57600)</option>
+          <option value="uno">Uno (115200)</option>
+        </select>
+        <p class="hint" style="margin-bottom:0.6rem">
+          Nano clones split between the two bootloaders and nothing on the port
+          says which. If flashing fails to sync, try the other one.
+        </p>
+
+        <div class="btn-row">
+          <button class="btn primary" type="button" id="hw-flash">Flash</button>
+        </div>
+        <div class="progress"><span id="hw-progress"></span></div>
+
+        <div class="note">
+          <strong>Wire the servo before you drive it.</strong> Signal to
+          <strong>A3</strong>, and power the servo from its own 4.8&ndash;6&nbsp;V
+          supply with a common ground &mdash; a servo&rsquo;s stall current will
+          brown out a USB-powered board mid-move.
+        </div>
+      </section>
+
+      <section class="card locked" id="card-connect">
+        <h2>2 &middot; Connect</h2>
+        <p class="hint">Opens the serial port and waits for the board to boot.</p>
+        <div class="btn-row" style="margin-bottom:0.6rem">
+          <button class="btn primary" type="button" id="hw-connect">Connect</button>
+          <button class="btn" type="button" id="hw-disconnect">Disconnect</button>
+        </div>
+        <div><span class="pill" id="hw-status">Not connected</span></div>
+      </section>
+
+      <section class="card locked" id="card-command">
+        <h2>3 &middot; Move</h2>
+        <p class="hint">
+          The board plans and runs the move itself, then streams what it
+          commanded.
+        </p>
+
+        <div class="seg" role="group" aria-label="Profile type">
+          <button type="button" id="hk-trap"    aria-pressed="true">Trapezoidal</button>
+          <button type="button" id="hk-scurve"  aria-pressed="false">S-curve</button>
+          <button type="button" id="hk-jerkpct" aria-pressed="false">Jerk&nbsp;%</button>
+        </div>
+
+        <div class="field">
+          <label for="hw-target">Target <span class="unit">&micro;s pulse width</span></label>
+          <div class="row">
+            <input type="range" id="hw-target-r" min="1000" max="2000" step="10" value="2000" aria-label="Target slider" />
+            <input type="number" id="hw-target" value="2000" step="10" />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="hw-vmax">Max velocity <span class="unit">&micro;s/s</span></label>
+          <div class="row">
+            <input type="range" id="hw-vmax-r" min="50" max="4000" step="10" value="1000" aria-label="Max velocity slider" />
+            <input type="number" id="hw-vmax" value="1000" step="10" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="hw-amax">Max acceleration <span class="unit">&micro;s/s&sup2;</span></label>
+          <div class="row">
+            <input type="range" id="hw-amax-r" min="100" max="20000" step="100" value="2000" aria-label="Max acceleration slider" />
+            <input type="number" id="hw-amax" value="2000" step="100" />
+          </div>
+        </div>
+        <div class="field" id="hw-f-jmax">
+          <label for="hw-jmax">Max jerk <span class="unit">&micro;s/s&sup3;</span></label>
+          <div class="row">
+            <input type="range" id="hw-jmax-r" min="100" max="80000" step="100" value="8000" aria-label="Max jerk slider" />
+            <input type="number" id="hw-jmax" value="8000" step="100" />
+          </div>
+        </div>
+        <div class="field" id="hw-f-jp">
+          <label for="hw-jp">Jerk percentage <span class="unit">% of accel phase</span></label>
+          <div class="row">
+            <input type="range" id="hw-jp-r" min="1" max="100" step="1" value="66" aria-label="Jerk percentage slider" />
+            <input type="number" id="hw-jp" value="66" step="1" min="1" max="100" />
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn primary" type="button" id="hw-move">Move</button>
+          <button class="btn" type="button" id="hw-home">Home (1500)</button>
+          <button class="btn danger" type="button" id="hw-stop">Stop</button>
+        </div>
+      </section>
+
+      <section class="card" id="card-units">
+        <h2>Degrees, if you know them</h2>
+        <p class="hint" style="margin-bottom:0.6rem">
+          Optional, and it is your figure rather than a measurement &mdash; this
+          demo has no encoder, so it cannot check it.
+        </p>
+        <div class="field">
+          <label for="hw-degus">Your servo <span class="unit">&deg; per &micro;s</span></label>
+          <div class="row"><input type="number" id="hw-degus" value="" step="0.001" placeholder="e.g. 0.0888" /></div>
+        </div>
+        <div class="note">
+          &ldquo;1000&ndash;2000&nbsp;&micro;s is 180&deg;&rdquo; is a convention,
+          not a specification. The servo on this library&rsquo;s bench rig does
+          <strong>0.0888&nbsp;&deg;/&micro;s</strong> &mdash; that range spans
+          89.7&deg;, half what everyone assumes. Measuring it needs an encoder,
+          so the charts stay in microseconds.
+        </div>
+      </section>
+    </div>
+
+    <div>
+      <section class="card">
+        <div id="hw-legend" class="legend" hidden></div>
+        <div id="hw-charts">
+          <div class="status">Flash and connect a board, then command a move.</div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Serial log</h2>
+        <div class="log-box" id="hw-log"></div>
+      </section>
     </div>
   </div>
 </div>
 
+<!-- The trajectory maths: src/*.cpp compiled to WebAssembly. -->
 <script src="./uti.js"></script>
+<!-- STK500v1 over Web Serial, for flashing an ATmega328P. Vendored
+     unmodified from avrbro 0.0.8 (MIT) -- see website/app/VENDOR.md. -->
+<script src="./avrbro.umd.js"></script>
 <script>
 "use strict";
 
@@ -763,6 +983,7 @@ function planAll() {
        static buffer. Hence the slice. */
     const view = new Float32Array(uti.HEAPF32.buffer, ptr, SAMPLES * 4);
     r.samples = view.slice();
+    r.count = SAMPLES;
 
     if (r.profile.key === "jerkpct") {
       r.derivedAMax = api.derivedAMax(r.profile.kind);
@@ -875,7 +1096,7 @@ function drawPanel(container, spec, drawable, tEnd) {
 
   let lo = Infinity, hi = -Infinity;
   for (const r of drawable) {
-    for (let i = 0; i < SAMPLES; i++) {
+    for (let i = 0; i < r.count; i++) {
       const v = r.samples[i * 4 + spec.col];
       if (v < lo) lo = v;
       if (v > hi) hi = v;
@@ -929,14 +1150,16 @@ function drawPanel(container, spec, drawable, tEnd) {
 
   for (const r of drawable) {
     let d = "";
-    for (let i = 0; i < SAMPLES; i++) {
+    for (let i = 0; i < r.count; i++) {
       const x = xScale(r.samples[i * 4 + 0]);
       const y = yScale(r.samples[i * 4 + spec.col]);
       d += (i === 0 ? "M" : "L") + x.toFixed(2) + "," + y.toFixed(2) + " ";
     }
-    svg.appendChild(svgEl("path", {
-      class: "series-path", d, stroke: r.profile.color,
-    }));
+    const attrs = { class: "series-path", d, stroke: r.profile.color };
+    // Used on the hardware tab to put the simulated curve underneath the
+    // board's own trace without a second colour competing with it.
+    if (r.profile.dash) attrs["stroke-dasharray"] = r.profile.dash;
+    svg.appendChild(svgEl("path", attrs));
   }
 
   /* Overlay group the crosshair draws into, so a hover never rebuilds the
@@ -973,8 +1196,10 @@ function attachCrosshair(host, panels, drawable) {
     const frac = (px - geom.M.left) / geom.plotW;
     if (frac < 0 || frac > 1) { clear(); return; }
 
-    const idx = Math.min(SAMPLES - 1, Math.max(0, Math.round(frac * (SAMPLES - 1))));
-    const t = drawable[0].samples[idx * 4 + 0];
+    const lead = drawable[0];
+    const idx = Math.min(lead.count - 1,
+                         Math.max(0, Math.round(frac * (lead.count - 1))));
+    const t = lead.samples[idx * 4 + 0];
 
     /* Same instant marked in every panel -- that is the point of sharing
        an x axis. */
@@ -1030,6 +1255,16 @@ function attachCrosshair(host, panels, drawable) {
   }
 }
 
+/* A dashed series gets a dashed swatch: the legend has to be readable as a
+   key to the chart, not just a colour list. */
+function legendItem(profile) {
+  const sw = profile.dash
+    ? '<span class="swatch" style="background:repeating-linear-gradient(90deg,' +
+      profile.color + ' 0 4px,transparent 4px 7px)"></span>'
+    : '<span class="swatch" style="background:' + profile.color + '"></span>';
+  return '<span class="item">' + sw + profile.label + "</span>";
+}
+
 function drawLegend(plan) {
   const el = $("legend");
   const drawable = plan.results.filter((r) => r.samples);
@@ -1038,10 +1273,7 @@ function drawLegend(plan) {
   if (drawable.length < 2) { el.hidden = true; el.innerHTML = ""; return; }
 
   el.hidden = false;
-  el.innerHTML = drawable.map((r) =>
-    '<span class="item"><span class="swatch" style="background:' +
-    r.profile.color + '"></span>' + r.profile.label + "</span>"
-  ).join("");
+  el.innerHTML = drawable.map((r) => legendItem(r.profile)).join("");
 }
 
 /* ---------------- readout ---------------- */
@@ -1068,7 +1300,7 @@ function drawReadout(plan) {
     add(r.profile.label + " duration", r.duration.toFixed(4) + " s");
 
     let peakV = 0, peakA = 0;
-    for (let i = 0; i < SAMPLES; i++) {
+    for (let i = 0; i < r.count; i++) {
       peakV = Math.max(peakV, Math.abs(r.samples[i * 4 + 2]));
       peakA = Math.max(peakA, Math.abs(r.samples[i * 4 + 3]));
     }
@@ -1167,7 +1399,7 @@ function drawTable(plan) {
   head += "</tr>";
 
   let body = "";
-  for (let i = 0; i < SAMPLES; i += STEP) {
+  for (let i = 0; i < drawable[0].count; i += STEP) {
     body += "<tr><td>" + drawable[0].samples[i * 4].toFixed(4) + "</td>";
     for (const r of drawable) {
       body += "<td>" + fmt(r.samples[i * 4 + 1], "wide") + "</td>" +
@@ -1190,7 +1422,7 @@ function buildCsv(plan) {
     out += "," + r.profile.key + "_pos," + r.profile.key + "_vel," + r.profile.key + "_accel";
   }
   out += "\n";
-  for (let i = 0; i < SAMPLES; i++) {
+  for (let i = 0; i < drawable[0].count; i++) {
     out += drawable[0].samples[i * 4].toFixed(6);
     for (const r of drawable) {
       out += "," + r.samples[i * 4 + 1].toFixed(6) +
@@ -1224,17 +1456,21 @@ function refresh() {
 
 /* Keep a slider and its number box showing the same value without either
    one fighting the other while it is being dragged. */
-function linkPair(numId, rangeId) {
+function linkPair(numId, rangeId, onChange) {
   const num = $(numId), rng = $(rangeId);
   if (!num || !rng) return;
+  // The hardware tab reuses this helper, so the callback has to be a
+  // parameter -- calling the simulator's refresh() unconditionally would
+  // re-plan and redraw the other tab on every hardware slider drag.
+  const notify = onChange || refresh;
   rng.value = num.value;
   num.addEventListener("input", () => {
     if (Number(num.value) >= Number(rng.min) && Number(num.value) <= Number(rng.max)) {
       rng.value = num.value;
     }
-    refresh();
+    notify();
   });
-  rng.addEventListener("input", () => { num.value = rng.value; refresh(); });
+  rng.addEventListener("input", () => { num.value = rng.value; notify(); });
 }
 
 const PRESETS = {
@@ -1304,7 +1540,8 @@ function wire() {
     if (!csv) { msg.textContent = "nothing to copy"; return; }
     try {
       await navigator.clipboard.writeText(csv);
-      msg.textContent = SAMPLES + " rows copied";
+      msg.textContent = lastPlan.results.filter((r) => r.samples)[0].count +
+                        " rows copied";
     } catch (e) {
       msg.textContent = "clipboard blocked: " + e.message;
     }
@@ -1323,6 +1560,564 @@ function wire() {
   }
 }
 
+/* ============================================================
+   Hardware tab -- flash an ATmega328P over Web Serial, then command
+   moves on it and draw what it streams back against the same profile
+   computed here in WebAssembly.
+
+   Protocol is examples/WebServoDemo/WebServoDemo.ino. Everything is in
+   microseconds of pulse width, deliberately: with no encoder there is no
+   way to know what a pulse width does to a given servo, and the usual
+   "1000-2000 us is 180 degrees" assumption is wrong often enough to
+   matter (the bench servo for this library does 89.7 degrees over that
+   range). Commanding as if it were 180 gives the right curve shape at
+   the wrong amplitude, which reads like a tracking failure rather than a
+   calibration error.
+   ============================================================ */
+
+/* Board picker value -> what avrbro needs, and what the bootloader
+   listens at. All three are the same ATmega328P image; only the
+   bootloader differs, which is an uploader setting, not a build. */
+const BOARDS = {
+  "nano-new": { avrbro: "nano (new bootloader)", baud: 115200, label: "Nano (new bootloader)" },
+  "nano-old": { avrbro: "nano",                  baud: 57600,  label: "Nano (old bootloader)" },
+  "uno":      { avrbro: "uno",                   baud: 115200, label: "Uno" },
+};
+
+const FIRMWARE_HEX = "./webservodemo-atmega328p.hex";
+const FIRMWARE_ID  = "UTI-WebServoDemo";
+const TELEM_BAUD   = 115200;
+
+/* Boards reset when the port opens (DTR), then sit in the bootloader
+   before jumping to the sketch. Nothing can be sent until that is done. */
+const BOOT_WAIT_MS = 1800;
+
+const HW_PROFILES = {
+  trap:    { key: "trap",    label: "Trapezoidal", color: "var(--s-trap)",    kind: KIND.trap },
+  scurve:  { key: "scurve",  label: "S-curve",     color: "var(--s-scurve)",  kind: KIND.scurve },
+  jerkpct: { key: "jerkpct", label: "Jerk %",      color: "var(--s-jerkpct)", kind: KIND.jerkpct },
+};
+
+const hw = {
+  port: null,          /* kept across the flash -> telemetry handover */
+  link: null,
+  connected: false,
+  moving: false,
+  telemetry: [],       /* [t, pos, vel, accel] rows, as they arrive */
+  sim: null,           /* the same move computed in WASM, for the overlay */
+  simProfile: null,
+};
+
+/* ---------------- serial link ---------------- */
+
+/* Ported from the sibling Servo Calibrator app, with its two documented
+   bugs designed out from the start: a single-flight lock so a slow reply
+   cannot desynchronise every later one, and a queue drain after boot so
+   USB resync garbage is never mistaken for a reply. */
+class SerialLink {
+  constructor(port) {
+    this.port = port;
+    this.reader = null;
+    this.writer = null;
+    this.buffer = "";
+    this.queue = [];
+    this.waiters = [];
+    this.busy = false;
+    this.onLog = null;
+    this.onTelemetry = null;
+    this.onDone = null;
+    this._readDone = null;
+  }
+
+  async open(baudRate) {
+    await this.port.open({ baudRate });
+    this.writer = this.port.writable.getWriter();
+    this._readDone = this._readLoop().catch((e) => {
+      this.onLog && this.onLog("read loop ended: " + e.message, true);
+    });
+  }
+
+  async _readLoop() {
+    const decoder = new TextDecoderStream();
+    const piped = this.port.readable.pipeTo(decoder.writable).catch(() => {});
+    this.reader = decoder.readable.getReader();
+    for (;;) {
+      const { value, done } = await this.reader.read();
+      if (done) break;
+      this.buffer += value;
+      let i;
+      while ((i = this.buffer.indexOf("\n")) >= 0) {
+        const raw = this.buffer.slice(0, i).replace(/\r$/, "");
+        this.buffer = this.buffer.slice(i + 1);
+        if (raw.length) this._onLine(raw);
+      }
+    }
+    await piped;
+  }
+
+  /* Route by line shape, not by arrival order. Telemetry streams
+     continuously during a move, so "the next line is my reply" is wrong
+     by construction. */
+  _onLine(line) {
+    if (line[0] === "#") { this.onLog && this.onLog(line); return; }
+
+    if (line.startsWith("TELEM ")) {
+      const f = line.split(/\s+/);
+      if (f.length === 5) {
+        this.onTelemetry && this.onTelemetry(
+          Number(f[1]) / 1000,      /* ms -> s */
+          Number(f[2]) / 100,       /* centi-units -> units */
+          Number(f[3]) / 100,
+          Number(f[4]) / 100
+        );
+      }
+      return;
+    }
+
+    /* "<ms> DONE <pos>" -- an event, not an answer to anything. */
+    const parts = line.split(/\s+/);
+    if (parts.length >= 2 && parts[1] === "DONE") {
+      this.onLog && this.onLog(line);
+      this.onDone && this.onDone(Number(parts[2]) / 100);
+      return;
+    }
+
+    this.onLog && this.onLog(line, line.startsWith("ERR"));
+    const w = this.waiters.shift();
+    if (w) w.resolve(line);
+    else this.queue.push(line);
+  }
+
+  waitLine(timeoutMs = 4000) {
+    const queued = this.queue.shift();
+    if (queued !== undefined) return Promise.resolve(queued);
+    return new Promise((resolve, reject) => {
+      const waiter = { resolve, reject, done: false };
+      const timer = setTimeout(() => {
+        const at = this.waiters.indexOf(waiter);
+        if (at >= 0) this.waiters.splice(at, 1);
+        reject(new Error("timed out after " + timeoutMs + " ms"));
+      }, timeoutMs);
+      waiter.resolve = (v) => { clearTimeout(timer); resolve(v); };
+      this.waiters.push(waiter);
+    });
+  }
+
+  async send(cmd, timeoutMs) {
+    this.onLog && this.onLog("> " + cmd, false, true);
+    await this.writer.write(new TextEncoder().encode(cmd + "\n"));
+    return await this.waitLine(timeoutMs);
+  }
+
+  /* One command in flight at a time. Without this, a client-side timeout
+     leaves the device still working, the next command goes out anyway,
+     and every reply after that is delivered to the wrong caller -- a bug
+     that actually happened in the sibling app. */
+  async sendGuarded(cmd, timeoutMs) {
+    if (this.busy) throw new Error("still waiting on the previous command");
+    this.busy = true;
+    try { return await this.send(cmd, timeoutMs); }
+    finally { this.busy = false; }
+  }
+
+  drain() { this.queue.length = 0; this.buffer = ""; }
+
+  async close() {
+    try { if (this.reader) await this.reader.cancel(); } catch (e) {}
+    try { if (this.writer) this.writer.releaseLock(); } catch (e) {}
+    try { await this._readDone; } catch (e) {}
+    try { await this.port.close(); } catch (e) {}
+    this.reader = null;
+    this.writer = null;
+  }
+}
+
+/* ---------------- logging ---------------- */
+
+function hwLog(text, isError, isTx) {
+  const box = $("hw-log");
+  const line = document.createElement("div");
+  if (isError) line.className = "err";
+  else if (isTx) line.className = "tx";
+  line.textContent = text;
+  box.appendChild(line);
+  while (box.childElementCount > 400) box.removeChild(box.firstChild);
+  box.scrollTop = box.scrollHeight;
+}
+
+function hwStatus(text, cls) {
+  const el = $("hw-status");
+  el.textContent = text;
+  el.className = "pill" + (cls ? " " + cls : "");
+}
+
+function hwLock(id, locked) { $(id).classList.toggle("locked", locked); }
+
+/* ---------------- flashing ---------------- */
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+async function hwFlash() {
+  const board = BOARDS[$("hw-board").value];
+  const btn = $("hw-flash");
+  const bar = $("hw-progress");
+
+  btn.disabled = true;
+  bar.style.width = "0%";
+  hwLog("flashing " + board.label + " at " + board.baud + " baud");
+
+  let serial = null;
+  try {
+    const res = await fetch(FIRMWARE_HEX);
+    if (!res.ok) throw new Error("could not fetch the firmware image (" + res.status + ")");
+    const hexText = await res.text();
+    const image = avrbro.parseHex(hexText);
+    hwLog("image parsed, " + image.length + " bytes");
+    bar.style.width = "10%";
+
+    /* avrbro opens the port itself (it needs the bootloader's baud, not
+       the sketch's). The returned port is kept so the telemetry
+       connection can reuse it -- Web Serial allows only one holder at a
+       time, and reusing it also spares a second port picker. */
+    serial = await avrbro.openSerial({ baudRate: board.baud });
+    if (!serial) { hwLog("cancelled", true); return; }
+    hw.port = serial.port;
+
+    bar.style.width = "25%";
+    hwLog("syncing with the bootloader...");
+
+    const ok = await avrbro.flash(serial, image, { boardName: board.avrbro });
+    bar.style.width = "100%";
+
+    if (ok) {
+      hwLog("flashed. now press Connect.");
+      hwLock("card-connect", false);
+    } else {
+      hwLog("flashing failed -- if it could not sync, try the other Nano " +
+            "bootloader option.", true);
+    }
+  } catch (e) {
+    hwLog("flash failed: " + e.message, true);
+    hwLog("a failure to sync usually means the wrong bootloader is selected; " +
+          "the two Nano options differ only in baud (115200 vs 57600).", true);
+  } finally {
+    /* Release the port either way. Web Serial permits one holder, so
+       leaving it open here would block the telemetry connection -- and
+       an open port in a stray tab also blocks arduino-cli, which
+       survives a page reload and is confusing to diagnose. */
+    if (serial) { try { await avrbro.closeSerial(serial); } catch (e) {} }
+    btn.disabled = false;
+  }
+}
+
+/* ---------------- connect ---------------- */
+
+async function hwConnect() {
+  if (hw.connected) return;
+  $("hw-connect").disabled = true;
+  try {
+    /* Reuse the port from the flash if there is one; otherwise ask,
+       which is the path for a board that is already flashed. */
+    if (!hw.port) hw.port = await navigator.serial.requestPort();
+
+    hwStatus("Connecting", null);
+    hw.link = new SerialLink(hw.port);
+    hw.link.onLog = hwLog;
+    hw.link.onTelemetry = hwTelemetry;
+    hw.link.onDone = hwDone;
+    await hw.link.open(TELEM_BAUD);
+
+    /* Opening the port pulls DTR and resets the board, so nothing sent
+       before its banner would be heard. */
+    hwLog("waiting for the board to boot...");
+    await sleep(BOOT_WAIT_MS);
+
+    /* Whatever arrived during the reset is USB resync noise plus the
+       banner, none of it a reply. Dropping it is what keeps the first
+       real command from being answered by garbage. */
+    hw.link.drain();
+
+    const reply = await hw.link.sendGuarded("ID", 3000);
+    if (!reply.includes(FIRMWARE_ID)) {
+      hwLog("unexpected firmware: " + reply, true);
+      hwLog("flash the demo sketch first (step 1).", true);
+      await hwDisconnect();
+      return;
+    }
+
+    hw.connected = true;
+    hwStatus("Connected", "good");
+    hwLog("connected to " + reply.replace(/^OK ID /, ""));
+    hwLock("card-command", false);
+    await hwPushSettings();
+  } catch (e) {
+    hwLog("connect failed: " + e.message, true);
+    hwStatus("Not connected", "bad");
+    try { if (hw.link) await hw.link.close(); } catch (e2) {}
+    hw.link = null;
+  } finally {
+    $("hw-connect").disabled = false;
+  }
+}
+
+async function hwDisconnect() {
+  if (hw.link) { await hw.link.close(); hw.link = null; }
+  hw.connected = false;
+  hw.moving = false;
+  hwStatus("Not connected", null);
+  hwLock("card-command", true);
+  hwLog("disconnected");
+}
+
+/* ---------------- commanding ---------------- */
+
+function hwSelectedProfile() {
+  for (const k in HW_PROFILES) {
+    if ($("hk-" + k).getAttribute("aria-pressed") === "true") return HW_PROFILES[k];
+  }
+  return HW_PROFILES.trap;
+}
+
+function hwReadLimits() {
+  return {
+    vMax: Number($("hw-vmax").value),
+    aMax: Number($("hw-amax").value),
+    jMax: Number($("hw-jmax").value),
+    jerkPercent: Number($("hw-jp").value),
+    target: Number($("hw-target").value),
+  };
+}
+
+async function hwPushSettings() {
+  if (!hw.connected) return;
+  const p = hwSelectedProfile();
+  const l = hwReadLimits();
+  await hw.link.sendGuarded("TYPE " + p.key);
+  await hw.link.sendGuarded(
+    "LIM " + l.vMax + " " + l.aMax + " " + l.jMax + " " + l.jerkPercent);
+}
+
+async function hwMove(target) {
+  if (!hw.connected || hw.moving) return;
+  try {
+    await hwPushSettings();
+
+    /* Compute the same move here before commanding it, so the board's
+       trace lands on top of a reference rather than being drawn alone.
+       The board plans it independently; agreement is the point. */
+    hwPrepareSim(target);
+
+    hw.telemetry = [];
+    hw.moving = true;
+    await hw.link.sendGuarded("MOVE " + target, 4000);
+  } catch (e) {
+    hw.moving = false;
+    hwLog("move failed: " + e.message, true);
+  }
+}
+
+function hwPrepareSim(target) {
+  const p = hwSelectedProfile();
+  const l = hwReadLimits();
+  /* Start from where the board actually is, not from the slider, or the
+     two curves would not describe the same move. */
+  const from = hw.lastPos !== undefined ? hw.lastPos : 1500;
+
+  const ok = api.plan(p.kind, from, target, l.vMax, l.aMax, l.jMax,
+                      l.jerkPercent, 0) === 1;
+  if (!ok) { hw.sim = null; hw.simProfile = p; return; }
+
+  const duration = api.duration(p.kind);
+  const n = 500;
+  const ptr = api.sample(p.kind, 0, duration * 1.06, n);
+  hw.sim = { samples: new Float32Array(uti.HEAPF32.buffer, ptr, n * 4).slice(), count: n };
+  hw.simProfile = p;
+}
+
+function hwTelemetry(t, pos, vel, accel) {
+  hw.lastPos = pos;
+  hw.telemetry.push(t, pos, vel, accel);
+  hwDrawCharts();
+}
+
+function hwDone(pos) {
+  hw.moving = false;
+  hw.lastPos = pos;
+  hwDrawCharts();
+}
+
+/* ---------------- hardware charts ---------------- */
+
+const HW_PANELS = [
+  { key: "pos", col: 1, title: "Position",     unit: "µs" },
+  { key: "vel", col: 2, title: "Velocity",     unit: "µs/s" },
+  { key: "acc", col: 3, title: "Acceleration", unit: "µs/s²" },
+];
+
+let hwRO = null;
+let hwWidth = 0;
+
+function hwDrawCharts() {
+  const host = $("hw-charts");
+  if (hwRO) { hwRO.disconnect(); hwRO = null; }
+
+  const rows = hw.telemetry.length / 4;
+  const series = [];
+
+  /* Reference first, so the board's own trace draws over it. */
+  if (hw.sim) {
+    series.push({
+      profile: {
+        label: "Simulated (" + hw.simProfile.label + ")",
+        color: "var(--ink-faint)",
+        dash: "5 4",
+      },
+      samples: hw.sim.samples,
+      count: hw.sim.count,
+    });
+  }
+  if (rows >= 2) {
+    series.push({
+      profile: { label: "Board", color: hwSelectedProfile().color },
+      samples: Float32Array.from(hw.telemetry),
+      count: rows,
+    });
+  }
+
+  const legend = $("hw-legend");
+  if (series.length === 0) {
+    legend.hidden = true;
+    host.innerHTML = '<div class="status">Command a move to see it plotted.</div>';
+    return;
+  }
+  legend.hidden = false;
+  legend.innerHTML = series.map((s) => legendItem(s.profile)).join("");
+
+  let tEnd = 0;
+  for (const s of series) tEnd = Math.max(tEnd, s.samples[(s.count - 1) * 4]);
+  if (!(tEnd > 0)) tEnd = 1;
+
+  const degPerUs = Number($("hw-degus").value);
+  host.innerHTML = "";
+  const panels = [];
+
+  for (const spec of HW_PANELS) {
+    const wrap = document.createElement("div");
+    wrap.className = "panel";
+    const head = document.createElement("div");
+    head.className = "panel-head";
+    const title = document.createElement("span");
+    title.className = "title";
+    title.textContent = spec.title;
+    const unit = document.createElement("span");
+    unit.className = "unit";
+    /* Only ever a restatement of the user's own number -- this rig has no
+       encoder and cannot check it, so it is never presented as measured. */
+    unit.textContent = (spec.key === "pos" && degPerUs > 0)
+      ? spec.unit + "  (≈ " + (1000 * degPerUs).toFixed(1) +
+        "° per 1000 µs, your figure)"
+      : spec.unit;
+    head.appendChild(title);
+    head.appendChild(unit);
+    wrap.appendChild(head);
+
+    const plot = document.createElement("div");
+    plot.className = "plot";
+    wrap.appendChild(plot);
+    host.appendChild(wrap);
+    panels.push({ spec, plot });
+  }
+
+  const render = () => {
+    for (const p of panels) drawPanel(p.plot, p.spec, series, tEnd);
+  };
+  render();
+
+  if (window.ResizeObserver) {
+    hwWidth = host.clientWidth;
+    hwRO = new ResizeObserver(() => {
+      const w = host.clientWidth;
+      if (w === hwWidth || w === 0) return;
+      hwWidth = w;
+      render();
+    });
+    hwRO.observe(host);
+  }
+
+  attachCrosshair(host, panels, series);
+}
+
+/* ---------------- hardware wiring ---------------- */
+
+function hwSyncFields() {
+  const sel = hwSelectedProfile().key;
+  $("hw-f-jmax").classList.toggle("dim", sel !== "scurve");
+  $("hw-f-jp").classList.toggle("dim", sel !== "jerkpct");
+}
+
+function hwWire() {
+  /* Feature-gate before anything else, with a real explanation rather
+     than a TypeError in a log box. */
+  const hasSerial = typeof navigator !== "undefined" && "serial" in navigator;
+  if (!hasSerial || !window.isSecureContext) {
+    $("hw-main").hidden = true;
+    $("hw-unsupported").hidden = false;
+    $("hw-unsupported-why").textContent = !window.isSecureContext
+      ? "This page is not in a secure context, so the browser will not expose serial ports. It needs to be served over https:// (or from localhost)."
+      : "navigator.serial is not available in this browser.";
+    return;
+  }
+
+  for (const k in HW_PROFILES) {
+    $("hk-" + k).addEventListener("click", () => {
+      for (const j in HW_PROFILES) {
+        $("hk-" + j).setAttribute("aria-pressed", String(j === k));
+      }
+      hwSyncFields();
+      hwPushSettings().catch(() => {});
+    });
+  }
+
+  // Limits are sent to the board when a move is commanded, not on every
+  // drag -- pushing mid-drag would be a burst of serial traffic for
+  // values the user is still scrubbing through.
+  const noop = () => {};
+  linkPair("hw-target", "hw-target-r", noop);
+  linkPair("hw-vmax", "hw-vmax-r", noop);
+  linkPair("hw-amax", "hw-amax-r", noop);
+  linkPair("hw-jmax", "hw-jmax-r", noop);
+  linkPair("hw-jp", "hw-jp-r", noop);
+
+  $("hw-degus").addEventListener("input", hwDrawCharts);
+
+  $("hw-flash").addEventListener("click", hwFlash);
+  $("hw-connect").addEventListener("click", hwConnect);
+  $("hw-disconnect").addEventListener("click", hwDisconnect);
+
+  $("hw-move").addEventListener("click", () => hwMove(Number($("hw-target").value)));
+  $("hw-home").addEventListener("click", () => hwMove(1500));
+
+  /* Never guarded and never disabled: STOP is the one command that has
+     to get through while the board is mid-move. */
+  $("hw-stop").addEventListener("click", async () => {
+    if (!hw.link) return;
+    try { await hw.link.send("STOP", 2000); } catch (e) { hwLog(e.message, true); }
+    hw.moving = false;
+  });
+
+  /* A physical unplug ends the read loop; say so rather than leaving the
+     UI claiming it is still connected. */
+  navigator.serial.addEventListener("disconnect", (ev) => {
+    if (hw.port && ev.target === hw.port) {
+      hwLog("the board was unplugged", true);
+      hw.port = null;
+      hwDisconnect();
+    }
+  });
+
+  hwSyncFields();
+}
+
 /* ---------------- boot ---------------- */
 
 function fatal(message, detail) {
@@ -1337,6 +2132,7 @@ function fatal(message, detail) {
 
 async function boot() {
   wire();
+  hwWire();
   syncFieldStates();
 
   if (typeof createUTI !== "function") {
