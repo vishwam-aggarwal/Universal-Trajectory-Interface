@@ -27,11 +27,17 @@ jobs:
 
       - uses: arduino/setup-arduino-cli@v2
 
-      - name: Install cores
+      - name: Install cores and libraries
         run: |
           arduino-cli core update-index
           arduino-cli core install arduino:avr
           arduino-cli core install arduino:renesas_uno
+          # Servo ships with the Arduino IDE but not with a bare core
+          # install, so WebServoDemo and HardwareValidation need it added
+          # explicitly here. It is the only external library either one
+          # wants -- HardwareValidation talks to its AS5600 through raw
+          # Wire calls rather than a driver library.
+          arduino-cli lib install Servo
 
       # This library and the Universal-Device-Interface submodule both have
       # to be on the library path. Staged as a sibling tree rather than
